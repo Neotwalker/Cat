@@ -141,7 +141,7 @@ function makeProfileMesh(profile, radialSegments, material) {
       const theta = u * Math.PI * 2;
       const c = Math.cos(theta);
       const sn = Math.sin(theta);
-      const x = ring.rx * c;
+      const x = (ring.x || 0) + ring.rx * c;
       const z = (ring.z || 0) + ring.rz * sn;
       positions.push(x, ring.y, z);
       uvs.push(u, row / Math.max(profile.length - 1, 1));
@@ -215,12 +215,12 @@ headBone.add(rightEarBone);
 
 const leftEyeBone = new THREE.Bone();
 leftEyeBone.name = 'EYE_L';
-leftEyeBone.position.set(-0.50, 0.08, 0.90);
+leftEyeBone.position.set(-0.43, 0.03, 0.96);
 headBone.add(leftEyeBone);
 
 const rightEyeBone = new THREE.Bone();
 rightEyeBone.name = 'EYE_R';
-rightEyeBone.position.set(0.50, 0.08, 0.90);
+rightEyeBone.position.set(0.43, 0.03, 0.96);
 headBone.add(rightEyeBone);
 
 const tailBones = [];
@@ -240,167 +240,173 @@ for (let i = 0; i < 5; i += 1) {
   tailParent = bone;
 }
 
-// CUSTOM MESH v1 — silhouette built from hand-authored front/side profiles.
+// CUSTOM MESH v2 — proportions re-cut directly from the latest mobile/reference comparison.
 const bodyMesh = makeProfileMesh([
-  { y: 1.02, rx: 0.36, rz: 0.52, z: -0.08 },
-  { y: 0.82, rx: 0.62, rz: 0.68, z: -0.03 },
-  { y: 0.52, rx: 0.75, rz: 0.80, z: 0.00 },
-  { y: 0.15, rx: 0.82, rz: 0.90, z: 0.02 },
-  { y: -0.25, rx: 0.90, rz: 0.97, z: 0.02 },
-  { y: -0.62, rx: 1.05, rz: 1.02, z: 0.00 },
-  { y: -0.94, rx: 1.17, rz: 1.00, z: -0.03 },
-  { y: -1.18, rx: 1.13, rz: 0.90, z: -0.08 },
-  { y: -1.38, rx: 0.92, rz: 0.73, z: -0.12 },
-  { y: -1.50, rx: 0.46, rz: 0.40, z: -0.13 },
-], 52, materials.fur);
-bodyMesh.position.set(0, 0.02, -0.02);
+  { y: 1.08, rx: 0.30, rz: 0.48, z: -0.10 },
+  { y: 0.86, rx: 0.50, rz: 0.62, z: -0.06 },
+  { y: 0.56, rx: 0.64, rz: 0.74, z: -0.01 },
+  { y: 0.18, rx: 0.73, rz: 0.84, z: 0.02 },
+  { y: -0.18, rx: 0.82, rz: 0.91, z: 0.03 },
+  { y: -0.55, rx: 0.95, rz: 0.97, z: 0.01 },
+  { y: -0.88, rx: 1.08, rz: 0.98, z: -0.02 },
+  { y: -1.12, rx: 1.06, rz: 0.90, z: -0.06 },
+  { y: -1.31, rx: 0.86, rz: 0.72, z: -0.10 },
+  { y: -1.43, rx: 0.42, rz: 0.38, z: -0.12 },
+], 56, materials.fur);
+bodyMesh.position.set(0, 0.03, -0.04);
 bodyBone.add(bodyMesh);
 
+// Long tapered bib, not an oval badge.
 const chestMesh = makeProfileMesh([
-  { y: 0.72, rx: 0.10, rz: 0.08, z: 0.94 },
-  { y: 0.52, rx: 0.34, rz: 0.14, z: 0.98 },
-  { y: 0.20, rx: 0.46, rz: 0.18, z: 1.01 },
-  { y: -0.14, rx: 0.50, rz: 0.19, z: 1.02 },
-  { y: -0.48, rx: 0.40, rz: 0.17, z: 1.01 },
-  { y: -0.76, rx: 0.27, rz: 0.14, z: 0.98 },
-  { y: -0.96, rx: 0.08, rz: 0.07, z: 0.94 },
-], 44, materials.white);
+  { y: 0.96, rx: 0.10, rz: 0.07, z: 0.86 },
+  { y: 0.76, rx: 0.34, rz: 0.11, z: 0.92 },
+  { y: 0.46, rx: 0.45, rz: 0.15, z: 0.96 },
+  { y: 0.12, rx: 0.48, rz: 0.17, z: 0.98 },
+  { y: -0.22, rx: 0.43, rz: 0.16, z: 0.97 },
+  { y: -0.54, rx: 0.34, rz: 0.14, z: 0.94 },
+  { y: -0.82, rx: 0.24, rz: 0.11, z: 0.91 },
+  { y: -1.05, rx: 0.12, rz: 0.08, z: 0.87 },
+  { y: -1.18, rx: 0.05, rz: 0.05, z: 0.84 },
+], 40, materials.white);
 chestBone.add(chestMesh);
 
-function makeFrontLeg(x) {
+function makeFrontLeg(side) {
+  const x = 0.40 * side;
   const upper = makeProfileMesh([
-    { y: 0.40, rx: 0.15, rz: 0.17, z: 0.00 },
-    { y: 0.18, rx: 0.18, rz: 0.20, z: 0.00 },
-    { y: -0.15, rx: 0.19, rz: 0.21, z: 0.00 },
-    { y: -0.46, rx: 0.20, rz: 0.22, z: 0.00 },
-  ], 28, materials.fur);
-  upper.position.set(x, -0.77, 0.82);
+    { y: 0.56, x: 0.08 * side, rx: 0.28, rz: 0.24, z: 0.00 },
+    { y: 0.30, x: 0.05 * side, rx: 0.24, rz: 0.23, z: 0.01 },
+    { y: 0.02, x: 0.02 * side, rx: 0.21, rz: 0.22, z: 0.02 },
+    { y: -0.30, x: 0.00, rx: 0.19, rz: 0.21, z: 0.03 },
+    { y: -0.58, x: 0.00, rx: 0.18, rz: 0.20, z: 0.03 },
+  ], 32, materials.fur);
+  upper.position.set(x, -0.58, 0.84);
   bodyBone.add(upper);
 
   const sock = makeProfileMesh([
-    { y: 0.28, rx: 0.19, rz: 0.21, z: 0.00 },
-    { y: 0.08, rx: 0.21, rz: 0.23, z: 0.00 },
-    { y: -0.24, rx: 0.23, rz: 0.25, z: 0.01 },
-  ], 28, materials.white);
-  sock.position.set(x, -1.18, 0.86);
+    { y: 0.30, rx: 0.18, rz: 0.20, z: 0.00 },
+    { y: 0.08, rx: 0.19, rz: 0.21, z: 0.01 },
+    { y: -0.22, rx: 0.21, rz: 0.23, z: 0.02 },
+  ], 30, materials.white);
+  sock.position.set(x, -1.20, 0.88);
   bodyBone.add(sock);
 
   const paw = makeProfileMesh([
-    { y: 0.16, rx: 0.20, rz: 0.24, z: 0.00 },
-    { y: 0.04, rx: 0.32, rz: 0.38, z: 0.03 },
-    { y: -0.12, rx: 0.35, rz: 0.40, z: 0.04 },
-    { y: -0.20, rx: 0.24, rz: 0.30, z: 0.02 },
+    { y: 0.13, rx: 0.19, rz: 0.22, z: 0.00 },
+    { y: 0.02, rx: 0.29, rz: 0.34, z: 0.03 },
+    { y: -0.12, rx: 0.31, rz: 0.35, z: 0.04 },
+    { y: -0.18, rx: 0.22, rz: 0.27, z: 0.02 },
   ], 34, materials.white);
-  paw.position.set(x, -1.48, 0.93);
+  paw.position.set(x, -1.47, 0.94);
   bodyBone.add(paw);
 }
-makeFrontLeg(-0.38);
-makeFrontLeg(0.38);
+makeFrontLeg(-1);
+makeFrontLeg(1);
 
 const hindFootLeft = makeProfileMesh([
-  { y: 0.16, rx: 0.22, rz: 0.24, z: 0.00 },
-  { y: 0.02, rx: 0.42, rz: 0.44, z: 0.03 },
-  { y: -0.16, rx: 0.45, rz: 0.46, z: 0.02 },
-  { y: -0.24, rx: 0.28, rz: 0.34, z: 0.00 },
-], 34, materials.white);
-hindFootLeft.position.set(-0.88, -1.42, 0.34);
+  { y: 0.12, rx: 0.18, rz: 0.21, z: 0.00 },
+  { y: 0.01, rx: 0.33, rz: 0.36, z: 0.02 },
+  { y: -0.12, rx: 0.35, rz: 0.37, z: 0.02 },
+  { y: -0.18, rx: 0.23, rz: 0.28, z: 0.00 },
+], 32, materials.white);
+hindFootLeft.position.set(-0.86, -1.37, 0.38);
 bodyBone.add(hindFootLeft);
 
 const hindFootRight = hindFootLeft.clone();
 hindFootRight.geometry = hindFootLeft.geometry.clone();
-hindFootRight.position.x = 0.88;
+hindFootRight.position.x = 0.86;
 bodyBone.add(hindFootRight);
 
+// Smaller, taller head with the cheek width concentrated low, like the reference.
 const headMesh = makeProfileMesh([
-  { y: 1.04, rx: 0.18, rz: 0.24, z: -0.10 },
-  { y: 0.91, rx: 0.62, rz: 0.58, z: -0.05 },
-  { y: 0.74, rx: 0.94, rz: 0.78, z: -0.01 },
-  { y: 0.52, rx: 1.13, rz: 0.94, z: 0.03 },
-  { y: 0.26, rx: 1.27, rz: 1.02, z: 0.06 },
-  { y: 0.00, rx: 1.35, rz: 1.08, z: 0.09 },
-  { y: -0.22, rx: 1.43, rz: 1.08, z: 0.13 },
-  { y: -0.42, rx: 1.46, rz: 1.02, z: 0.18 },
-  { y: -0.60, rx: 1.34, rz: 0.91, z: 0.25 },
-  { y: -0.76, rx: 1.08, rz: 0.75, z: 0.30 },
-  { y: -0.86, rx: 0.55, rz: 0.46, z: 0.31 },
-], 58, materials.fur);
-headMesh.position.set(0, 0.05, -0.02);
+  { y: 1.02, rx: 0.15, rz: 0.23, z: -0.08 },
+  { y: 0.88, rx: 0.52, rz: 0.55, z: -0.04 },
+  { y: 0.70, rx: 0.82, rz: 0.73, z: 0.00 },
+  { y: 0.48, rx: 1.02, rz: 0.86, z: 0.04 },
+  { y: 0.22, rx: 1.12, rz: 0.94, z: 0.08 },
+  { y: -0.02, rx: 1.17, rz: 0.98, z: 0.11 },
+  { y: -0.22, rx: 1.24, rz: 0.98, z: 0.15 },
+  { y: -0.40, rx: 1.28, rz: 0.93, z: 0.20 },
+  { y: -0.56, rx: 1.18, rz: 0.83, z: 0.26 },
+  { y: -0.70, rx: 0.96, rz: 0.70, z: 0.30 },
+  { y: -0.80, rx: 0.48, rz: 0.44, z: 0.31 },
+], 60, materials.fur);
+headMesh.position.set(0, 0.10, -0.02);
 headBone.add(headMesh);
 
 const forehead = makeProfileMesh([
-  { y: 0.25, rx: 0.14, rz: 0.06, z: 1.02 },
-  { y: 0.10, rx: 0.46, rz: 0.10, z: 1.05 },
-  { y: -0.10, rx: 0.54, rz: 0.11, z: 1.06 },
-  { y: -0.22, rx: 0.26, rz: 0.07, z: 1.04 },
+  { y: 0.22, rx: 0.12, rz: 0.05, z: 0.99 },
+  { y: 0.08, rx: 0.40, rz: 0.08, z: 1.02 },
+  { y: -0.08, rx: 0.47, rz: 0.09, z: 1.03 },
+  { y: -0.18, rx: 0.22, rz: 0.06, z: 1.02 },
 ], 30, materials.furDark);
-forehead.position.y = 0.55;
+forehead.position.y = 0.57;
 headBone.add(forehead);
 
-const leftEar = makeCone(0.54, 1.48, materials.fur, 3);
-leftEar.position.set(0, 0.50, 0);
-leftEar.scale.set(0.88, 1, 0.54);
+const leftEar = makeCone(0.50, 1.50, materials.fur, 3);
+leftEar.position.set(0, 0.52, 0);
+leftEar.scale.set(0.84, 1, 0.52);
 leftEar.rotation.z = deg(-2);
 leftEarBone.add(leftEar);
 
-const rightEar = makeCone(0.54, 1.48, materials.fur, 3);
-rightEar.position.set(0, 0.50, 0);
-rightEar.scale.set(0.88, 1, 0.54);
+const rightEar = makeCone(0.50, 1.50, materials.fur, 3);
+rightEar.position.set(0, 0.52, 0);
+rightEar.scale.set(0.84, 1, 0.52);
 rightEar.rotation.z = deg(2);
 rightEarBone.add(rightEar);
 
-const innerLeft = makeCone(0.36, 1.05, materials.pink, 3);
-innerLeft.position.set(0, 0.49, 0.20);
-innerLeft.scale.set(0.68, 0.84, 0.30);
+const innerLeft = makeCone(0.34, 1.08, materials.pink, 3);
+innerLeft.position.set(0, 0.51, 0.20);
+innerLeft.scale.set(0.66, 0.84, 0.28);
 leftEarBone.add(innerLeft);
 
-const innerRight = makeCone(0.36, 1.05, materials.pink, 3);
-innerRight.position.set(0, 0.49, 0.20);
-innerRight.scale.set(0.68, 0.84, 0.30);
+const innerRight = makeCone(0.34, 1.08, materials.pink, 3);
+innerRight.position.set(0, 0.51, 0.20);
+innerRight.scale.set(0.66, 0.84, 0.28);
 rightEarBone.add(innerRight);
 
 const eyeParts = [];
 
 function buildEye(bone) {
-  const white = makeSphere(0.51, materials.eyeWhite, [1.02, 1.17, 0.70]);
+  const white = makeSphere(0.43, materials.eyeWhite, [1.00, 1.12, 0.68]);
   bone.add(white);
 
   // Real eyelids: the eyeball itself never gets squashed during a blink.
   const upperLid = new THREE.Mesh(
-    new THREE.SphereGeometry(0.518, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.SphereGeometry(0.438, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2),
     materials.eyelid,
   );
-  upperLid.scale.set(1.04, 0.035, 0.72);
+  upperLid.scale.set(1.03, 0.035, 0.70);
   upperLid.renderOrder = 4;
   bone.add(upperLid);
 
   const lowerLid = new THREE.Mesh(
-    new THREE.SphereGeometry(0.518, 40, 18, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    new THREE.SphereGeometry(0.438, 40, 18, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
     materials.eyelid,
   );
-  lowerLid.scale.set(1.04, 0.035, 0.72);
+  lowerLid.scale.set(1.03, 0.035, 0.70);
   lowerLid.renderOrder = 4;
   bone.add(lowerLid);
 
   const iris = new THREE.Mesh(
-    new THREE.CircleGeometry(0.275, 48),
+    new THREE.CircleGeometry(0.215, 48),
     materials.iris,
   );
-  iris.position.z = 0.365;
+  iris.position.z = 0.302;
   bone.add(iris);
 
   const pupil = new THREE.Mesh(
-    new THREE.CircleGeometry(0.098, 36),
+    new THREE.CircleGeometry(0.078, 36),
     materials.pupil,
   );
   pupil.scale.y = 1.72;
-  pupil.position.z = 0.374;
+  pupil.position.z = 0.309;
   bone.add(pupil);
 
   const shine = new THREE.Mesh(
-    new THREE.CircleGeometry(0.040, 24),
+    new THREE.CircleGeometry(0.032, 24),
     new THREE.MeshBasicMaterial({ color: 0xffffff }),
   );
-  shine.position.set(-0.085, 0.105, 0.382);
+  shine.position.set(-0.068, 0.086, 0.315);
   bone.add(shine);
 
   eyeParts.push({ bone, white, iris, pupil, shine, upperLid, lowerLid });
@@ -410,31 +416,31 @@ buildEye(leftEyeBone);
 buildEye(rightEyeBone);
 
 const cheekLeft = makeProfileMesh([
-  { y: 0.24, rx: 0.16, rz: 0.12, z: 1.02 },
-  { y: 0.08, rx: 0.42, rz: 0.23, z: 1.10 },
-  { y: -0.14, rx: 0.52, rz: 0.28, z: 1.15 },
-  { y: -0.34, rx: 0.47, rz: 0.26, z: 1.14 },
-  { y: -0.46, rx: 0.24, rz: 0.16, z: 1.08 },
+  { y: 0.20, rx: 0.12, rz: 0.10, z: 0.98 },
+  { y: 0.06, rx: 0.34, rz: 0.19, z: 1.05 },
+  { y: -0.12, rx: 0.42, rz: 0.23, z: 1.09 },
+  { y: -0.28, rx: 0.38, rz: 0.22, z: 1.08 },
+  { y: -0.38, rx: 0.18, rz: 0.13, z: 1.03 },
 ], 34, materials.white);
-cheekLeft.position.set(-0.30, -0.33, 0.02);
+cheekLeft.position.set(-0.25, -0.34, 0.02);
 headBone.add(cheekLeft);
 
 const cheekRight = cheekLeft.clone();
 cheekRight.geometry = cheekLeft.geometry.clone();
-cheekRight.position.x = 0.30;
+cheekRight.position.x = 0.25;
 headBone.add(cheekRight);
 
 const chin = makeProfileMesh([
-  { y: 0.16, rx: 0.16, rz: 0.10, z: 1.04 },
-  { y: 0.02, rx: 0.42, rz: 0.20, z: 1.10 },
-  { y: -0.18, rx: 0.46, rz: 0.22, z: 1.10 },
-  { y: -0.30, rx: 0.22, rz: 0.13, z: 1.06 },
-], 32, materials.white);
-chin.position.set(0, -0.58, 0);
+  { y: 0.12, rx: 0.12, rz: 0.08, z: 1.00 },
+  { y: 0.00, rx: 0.30, rz: 0.16, z: 1.05 },
+  { y: -0.14, rx: 0.34, rz: 0.18, z: 1.05 },
+  { y: -0.22, rx: 0.17, rz: 0.10, z: 1.02 },
+], 30, materials.white);
+chin.position.set(0, -0.57, 0);
 headBone.add(chin);
 
 const nose = makeSphere(0.145, materials.pink, [1.02, 0.72, 0.66]);
-nose.position.set(0, -0.38, 1.33);
+nose.position.set(0, -0.36, 1.24);
 headBone.add(nose);
 
 addMouthCurve([
@@ -453,13 +459,13 @@ function addBrow(points) {
     points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
   );
   const brow = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 16, 0.032, 8, false),
+    new THREE.TubeGeometry(curve, 16, 0.022, 8, false),
     materials.mouth,
   );
   headBone.add(brow);
 }
-addBrow([[-0.82, 0.48, 1.13], [-0.56, 0.58, 1.18], [-0.31, 0.53, 1.15]]);
-addBrow([[0.31, 0.53, 1.15], [0.56, 0.58, 1.18], [0.82, 0.48, 1.13]]);
+addBrow([[-0.68, 0.43, 1.08], [-0.50, 0.51, 1.12], [-0.31, 0.48, 1.10]]);
+addBrow([[0.31, 0.48, 1.10], [0.50, 0.51, 1.12], [0.68, 0.43, 1.08]]);
 
 // Small line whiskers keep the primitive prototype readable as a cat.
 function addWhiskers(side) {
@@ -484,7 +490,7 @@ addWhiskers('right');
 
 tailBones.forEach((bone, index) => {
   const segment = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.31 - index * 0.026, 0.58, 6, 12),
+    new THREE.CapsuleGeometry(0.34 - index * 0.025, 0.62, 7, 14),
     materials.fur,
   );
   segment.rotation.z = deg(90);
@@ -715,8 +721,8 @@ function resize() {
   camera.aspect = width / height;
 
   // Keep roughly the same framing on narrow screens.
-  camera.position.z = width < 600 ? 10.7 : 9.7;
-  camera.position.y = width < 600 ? 0.05 : 0.28;
+  camera.position.z = width < 600 ? 11.2 : 10.0;
+  camera.position.y = width < 600 ? -0.02 : 0.22;
   camera.updateProjectionMatrix();
 }
 
