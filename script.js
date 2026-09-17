@@ -125,6 +125,48 @@ function makeCapsule(radius, length, material, scale = [1, 1, 1]) {
   return mesh;
 }
 
+// Custom rotational profile mesh. Each ring controls the front silhouette (rx),
+// side depth (rz) and local forward/back offset (z), so the model can be shaped
+// from the front + side references instead of being assembled from spheres.
+function makeProfileMesh(profile, radialSegments, material) {
+  const geometry = new THREE.BufferGeometry();
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  const stride = radialSegments + 1;
+
+  profile.forEach((ring, row) => {
+    for (let i = 0; i <= radialSegments; i += 1) {
+      const u = i / radialSegments;
+      const theta = u * Math.PI * 2;
+      const c = Math.cos(theta);
+      const sn = Math.sin(theta);
+      const x = ring.rx * c;
+      const z = (ring.z || 0) + ring.rz * sn;
+      positions.push(x, ring.y, z);
+      uvs.push(u, row / Math.max(profile.length - 1, 1));
+    }
+  });
+
+  for (let row = 0; row < profile.length - 1; row += 1) {
+    for (let i = 0; i < radialSegments; i += 1) {
+      const a = row * stride + i;
+      const b = a + stride;
+      const c = b + 1;
+      const d = a + 1;
+      indices.push(a, b, d, b, c, d);
+    }
+  }
+
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+
+  return new THREE.Mesh(geometry, material);
+}
+
 function addMouthCurve(points) {
   const curve = new THREE.CatmullRomCurve3(
     points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
@@ -198,111 +240,121 @@ for (let i = 0; i < 5; i += 1) {
   tailParent = bone;
 }
 
-// Shape pass v2: silhouette-first. Deliberately stronger proportions so changes read clearly on mobile.
-const shoulderMesh = makeSphere(0.86, materials.fur, [1.02, 0.78, 0.94]);
-shoulderMesh.position.set(0, 0.58, -0.03);
-bodyBone.add(shoulderMesh);
-
-const bodyMesh = makeSphere(1, materials.fur, [0.96, 1.22, 0.94]);
-bodyMesh.position.set(0, -0.08, -0.02);
+// CUSTOM MESH v1 — silhouette built from hand-authored front/side profiles.
+const bodyMesh = makeProfileMesh([
+  { y: 1.02, rx: 0.36, rz: 0.52, z: -0.08 },
+  { y: 0.82, rx: 0.62, rz: 0.68, z: -0.03 },
+  { y: 0.52, rx: 0.75, rz: 0.80, z: 0.00 },
+  { y: 0.15, rx: 0.82, rz: 0.90, z: 0.02 },
+  { y: -0.25, rx: 0.90, rz: 0.97, z: 0.02 },
+  { y: -0.62, rx: 1.05, rz: 1.02, z: 0.00 },
+  { y: -0.94, rx: 1.17, rz: 1.00, z: -0.03 },
+  { y: -1.18, rx: 1.13, rz: 0.90, z: -0.08 },
+  { y: -1.38, rx: 0.92, rz: 0.73, z: -0.12 },
+  { y: -1.50, rx: 0.46, rz: 0.40, z: -0.13 },
+], 52, materials.fur);
+bodyMesh.position.set(0, 0.02, -0.02);
 bodyBone.add(bodyMesh);
 
-const bellyMesh = makeSphere(0.82, materials.fur, [1.08, 0.86, 1.02]);
-bellyMesh.position.set(0, -0.66, 0.02);
-bodyBone.add(bellyMesh);
-
-const haunchLeft = makeSphere(0.64, materials.fur, [0.92, 1.04, 1.02]);
-haunchLeft.position.set(-0.72, -0.58, -0.02);
-bodyBone.add(haunchLeft);
-
-const haunchRight = makeSphere(0.64, materials.fur, [0.92, 1.04, 1.02]);
-haunchRight.position.set(0.72, -0.58, -0.02);
-bodyBone.add(haunchRight);
-
-const chestMesh = makeSphere(0.70, materials.white, [0.70, 0.82, 0.48]);
-chestMesh.position.set(0, 0.18, 0.92);
+const chestMesh = makeProfileMesh([
+  { y: 0.72, rx: 0.10, rz: 0.08, z: 0.94 },
+  { y: 0.52, rx: 0.34, rz: 0.14, z: 0.98 },
+  { y: 0.20, rx: 0.46, rz: 0.18, z: 1.01 },
+  { y: -0.14, rx: 0.50, rz: 0.19, z: 1.02 },
+  { y: -0.48, rx: 0.40, rz: 0.17, z: 1.01 },
+  { y: -0.76, rx: 0.27, rz: 0.14, z: 0.98 },
+  { y: -0.96, rx: 0.08, rz: 0.07, z: 0.94 },
+], 44, materials.white);
 chestBone.add(chestMesh);
 
-const chestTuftTop = makeSphere(0.33, materials.white, [1.18, 0.48, 0.62]);
-chestTuftTop.position.set(0, 0.50, 1.03);
-chestBone.add(chestTuftTop);
+function makeFrontLeg(x) {
+  const upper = makeProfileMesh([
+    { y: 0.40, rx: 0.15, rz: 0.17, z: 0.00 },
+    { y: 0.18, rx: 0.18, rz: 0.20, z: 0.00 },
+    { y: -0.15, rx: 0.19, rz: 0.21, z: 0.00 },
+    { y: -0.46, rx: 0.20, rz: 0.22, z: 0.00 },
+  ], 28, materials.fur);
+  upper.position.set(x, -0.77, 0.82);
+  bodyBone.add(upper);
 
-const chestTuftBottom = makeSphere(0.34, materials.white, [0.88, 0.54, 0.58]);
-chestTuftBottom.position.set(0, -0.42, 1.00);
-chestBone.add(chestTuftBottom);
+  const sock = makeProfileMesh([
+    { y: 0.28, rx: 0.19, rz: 0.21, z: 0.00 },
+    { y: 0.08, rx: 0.21, rz: 0.23, z: 0.00 },
+    { y: -0.24, rx: 0.23, rz: 0.25, z: 0.01 },
+  ], 28, materials.white);
+  sock.position.set(x, -1.18, 0.86);
+  bodyBone.add(sock);
 
-const frontLegLeft = makeCapsule(0.20, 0.60, materials.fur, [0.94, 1, 0.84]);
-frontLegLeft.position.set(-0.38, -0.72, 0.82);
-bodyBone.add(frontLegLeft);
+  const paw = makeProfileMesh([
+    { y: 0.16, rx: 0.20, rz: 0.24, z: 0.00 },
+    { y: 0.04, rx: 0.32, rz: 0.38, z: 0.03 },
+    { y: -0.12, rx: 0.35, rz: 0.40, z: 0.04 },
+    { y: -0.20, rx: 0.24, rz: 0.30, z: 0.02 },
+  ], 34, materials.white);
+  paw.position.set(x, -1.48, 0.93);
+  bodyBone.add(paw);
+}
+makeFrontLeg(-0.38);
+makeFrontLeg(0.38);
 
-const frontLegRight = makeCapsule(0.20, 0.60, materials.fur, [0.94, 1, 0.84]);
-frontLegRight.position.set(0.38, -0.72, 0.82);
-bodyBone.add(frontLegRight);
-
-const sockLeft = makeCapsule(0.215, 0.42, materials.white, [0.98, 1, 0.90]);
-sockLeft.position.set(-0.38, -1.13, 0.90);
-bodyBone.add(sockLeft);
-
-const sockRight = makeCapsule(0.215, 0.42, materials.white, [0.98, 1, 0.90]);
-sockRight.position.set(0.38, -1.13, 0.90);
-bodyBone.add(sockRight);
-
-const frontFootLeft = makeSphere(0.30, materials.white, [1.12, 0.58, 1.30]);
-frontFootLeft.position.set(-0.38, -1.48, 0.96);
-bodyBone.add(frontFootLeft);
-
-const frontFootRight = makeSphere(0.30, materials.white, [1.12, 0.58, 1.30]);
-frontFootRight.position.set(0.38, -1.48, 0.96);
-bodyBone.add(frontFootRight);
-
-const hindFootLeft = makeSphere(0.36, materials.white, [1.14, 0.56, 1.28]);
-hindFootLeft.position.set(-0.90, -1.38, 0.42);
+const hindFootLeft = makeProfileMesh([
+  { y: 0.16, rx: 0.22, rz: 0.24, z: 0.00 },
+  { y: 0.02, rx: 0.42, rz: 0.44, z: 0.03 },
+  { y: -0.16, rx: 0.45, rz: 0.46, z: 0.02 },
+  { y: -0.24, rx: 0.28, rz: 0.34, z: 0.00 },
+], 34, materials.white);
+hindFootLeft.position.set(-0.88, -1.42, 0.34);
 bodyBone.add(hindFootLeft);
 
-const hindFootRight = makeSphere(0.36, materials.white, [1.14, 0.56, 1.28]);
-hindFootRight.position.set(0.90, -1.38, 0.42);
+const hindFootRight = hindFootLeft.clone();
+hindFootRight.geometry = hindFootLeft.geometry.clone();
+hindFootRight.position.x = 0.88;
 bodyBone.add(hindFootRight);
 
-// The cranium is intentionally narrower than the cheek masses: this makes a readable cat silhouette.
-const headMesh = makeSphere(1, materials.fur, [1.28, 1.08, 1.04]);
-headMesh.position.set(0, 0.12, -0.02);
+const headMesh = makeProfileMesh([
+  { y: 1.04, rx: 0.18, rz: 0.24, z: -0.10 },
+  { y: 0.91, rx: 0.62, rz: 0.58, z: -0.05 },
+  { y: 0.74, rx: 0.94, rz: 0.78, z: -0.01 },
+  { y: 0.52, rx: 1.13, rz: 0.94, z: 0.03 },
+  { y: 0.26, rx: 1.27, rz: 1.02, z: 0.06 },
+  { y: 0.00, rx: 1.35, rz: 1.08, z: 0.09 },
+  { y: -0.22, rx: 1.43, rz: 1.08, z: 0.13 },
+  { y: -0.42, rx: 1.46, rz: 1.02, z: 0.18 },
+  { y: -0.60, rx: 1.34, rz: 0.91, z: 0.25 },
+  { y: -0.76, rx: 1.08, rz: 0.75, z: 0.30 },
+  { y: -0.86, rx: 0.55, rz: 0.46, z: 0.31 },
+], 58, materials.fur);
+headMesh.position.set(0, 0.05, -0.02);
 headBone.add(headMesh);
 
-const skullTop = makeSphere(0.68, materials.furLight, [1.12, 0.56, 0.74]);
-skullTop.position.set(0, 0.61, 0.18);
-headBone.add(skullTop);
-
-const faceSideLeft = makeSphere(0.66, materials.fur, [1.08, 0.78, 0.80]);
-faceSideLeft.position.set(-0.67, -0.20, 0.34);
-headBone.add(faceSideLeft);
-
-const faceSideRight = makeSphere(0.66, materials.fur, [1.08, 0.78, 0.80]);
-faceSideRight.position.set(0.67, -0.20, 0.34);
-headBone.add(faceSideRight);
-
-const forehead = makeSphere(0.62, materials.furDark, [0.62, 0.28, 0.16]);
-forehead.position.set(0, 0.62, 0.93);
+const forehead = makeProfileMesh([
+  { y: 0.25, rx: 0.14, rz: 0.06, z: 1.02 },
+  { y: 0.10, rx: 0.46, rz: 0.10, z: 1.05 },
+  { y: -0.10, rx: 0.54, rz: 0.11, z: 1.06 },
+  { y: -0.22, rx: 0.26, rz: 0.07, z: 1.04 },
+], 30, materials.furDark);
+forehead.position.y = 0.55;
 headBone.add(forehead);
 
-const leftEar = makeCone(0.56, 1.50, materials.fur, 3);
-leftEar.position.set(0, 0.51, 0);
-leftEar.scale.set(0.88, 1, 0.56);
+const leftEar = makeCone(0.54, 1.48, materials.fur, 3);
+leftEar.position.set(0, 0.50, 0);
+leftEar.scale.set(0.88, 1, 0.54);
 leftEar.rotation.z = deg(-2);
 leftEarBone.add(leftEar);
 
-const rightEar = makeCone(0.56, 1.50, materials.fur, 3);
-rightEar.position.set(0, 0.51, 0);
-rightEar.scale.set(0.88, 1, 0.56);
+const rightEar = makeCone(0.54, 1.48, materials.fur, 3);
+rightEar.position.set(0, 0.50, 0);
+rightEar.scale.set(0.88, 1, 0.54);
 rightEar.rotation.z = deg(2);
 rightEarBone.add(rightEar);
 
-const innerLeft = makeCone(0.37, 1.07, materials.pink, 3);
-innerLeft.position.set(0, 0.50, 0.20);
+const innerLeft = makeCone(0.36, 1.05, materials.pink, 3);
+innerLeft.position.set(0, 0.49, 0.20);
 innerLeft.scale.set(0.68, 0.84, 0.30);
 leftEarBone.add(innerLeft);
 
-const innerRight = makeCone(0.37, 1.07, materials.pink, 3);
-innerRight.position.set(0, 0.50, 0.20);
+const innerRight = makeCone(0.36, 1.05, materials.pink, 3);
+innerRight.position.set(0, 0.49, 0.20);
 innerRight.scale.set(0.68, 0.84, 0.30);
 rightEarBone.add(innerRight);
 
@@ -357,16 +409,28 @@ function buildEye(bone) {
 buildEye(leftEyeBone);
 buildEye(rightEyeBone);
 
-const cheekLeft = makeSphere(0.56, materials.white, [1.08, 0.70, 0.68]);
-cheekLeft.position.set(-0.33, -0.45, 0.98);
+const cheekLeft = makeProfileMesh([
+  { y: 0.24, rx: 0.16, rz: 0.12, z: 1.02 },
+  { y: 0.08, rx: 0.42, rz: 0.23, z: 1.10 },
+  { y: -0.14, rx: 0.52, rz: 0.28, z: 1.15 },
+  { y: -0.34, rx: 0.47, rz: 0.26, z: 1.14 },
+  { y: -0.46, rx: 0.24, rz: 0.16, z: 1.08 },
+], 34, materials.white);
+cheekLeft.position.set(-0.30, -0.33, 0.02);
 headBone.add(cheekLeft);
 
-const cheekRight = makeSphere(0.56, materials.white, [1.08, 0.70, 0.68]);
-cheekRight.position.set(0.33, -0.45, 0.98);
+const cheekRight = cheekLeft.clone();
+cheekRight.geometry = cheekLeft.geometry.clone();
+cheekRight.position.x = 0.30;
 headBone.add(cheekRight);
 
-const chin = makeSphere(0.48, materials.white, [0.92, 0.55, 0.62]);
-chin.position.set(0, -0.67, 0.96);
+const chin = makeProfileMesh([
+  { y: 0.16, rx: 0.16, rz: 0.10, z: 1.04 },
+  { y: 0.02, rx: 0.42, rz: 0.20, z: 1.10 },
+  { y: -0.18, rx: 0.46, rz: 0.22, z: 1.10 },
+  { y: -0.30, rx: 0.22, rz: 0.13, z: 1.06 },
+], 32, materials.white);
+chin.position.set(0, -0.58, 0);
 headBone.add(chin);
 
 const nose = makeSphere(0.145, materials.pink, [1.02, 0.72, 0.66]);
@@ -607,12 +671,8 @@ function animate(now) {
   rightEarBone.rotation.z = deg(8) - x * 0.065 - y * 0.022 - earPulse + state.earFlick * 0.45 - startle * 0.09;
 
   const breath = reducedMotion ? 1 : 1 + Math.sin(now * 0.00115) * 0.012 - startle * 0.012;
-  shoulderMesh.scale.set(1.02, 0.78 * breath, 0.94);
-  bodyMesh.scale.set(0.96, 1.22 * breath, 0.94);
-  bellyMesh.scale.set(1.08, 0.86 * breath, 1.02);
-  haunchLeft.scale.set(0.92, 1.04 * breath, 1.02);
-  haunchRight.scale.set(0.92, 1.04 * breath, 1.02);
-  chestMesh.scale.set(0.70, 0.82 * breath, 0.48);
+  bodyMesh.scale.set(1, breath, 1);
+  chestMesh.scale.set(1, breath, 1);
   bodyBone.position.y = -1.02 + (reducedMotion ? 0 : Math.sin(now * 0.00115) * 0.025) + startle * 0.018;
   bodyBone.rotation.z = -x * 0.008 + state.startleSide * startle * 0.01;
 
