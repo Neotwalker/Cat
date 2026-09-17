@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#080a0f" />
-  <title>Cursor Cat — Three.js skeletal prototype</title>
+  <title>Cursor Cat — Layered 2.5D</title>
   <link rel="stylesheet" href="./styles.css" />
   <script type="importmap">
     {
@@ -20,26 +20,26 @@
     <div class="hero__glow hero__glow--two"></div>
 
     <section class="hero__copy">
-      <p class="hero__kicker">Three.js · custom mesh v3</p>
-      <h1 class="hero__title">Теперь он начинает<br />быть похожим.</h1>
+      <p class="hero__kicker">Three.js · layered 2.5D</p>
+      <h1 class="hero__title">Теперь это уже<br />наш кот.</h1>
       <p class="hero__text">
-        custom mesh v3: пропорции головы, глаз, груди и передних лап теперь правятся прямо по мобильному сравнению с референсом.
+        Layered Cat v1: внешний вид собран из референсных 2.5D-слоёв, а Three.js отвечает за инерцию головы, idle, хвост, моргание и реакцию на касание.
       </p>
       <p class="hero__hint"><span></span><b id="hintText">Двигай мышью · нажми на кота</b></p>
     </section>
 
-    <section class="hero__stage" id="stage" aria-label="Интерактивный 3D-кот">
+    <section class="hero__stage" id="stage" aria-label="Интерактивный 2.5D-кот">
       <div class="stage__halo"></div>
       <div class="stage__canvas" id="canvasHost"></div>
       <div class="stage__shadow" aria-hidden="true"></div>
 
       <div class="stage__badge">
         <span class="stage__dot"></span>
-        custom mesh v3
+        layered cat v1
       </div>
 
       <button class="stage__debug" id="debugToggle" type="button" aria-pressed="false">
-        Показать скелет
+        Разложить слои
       </button>
 
       <div class="stage__fallback" id="fallback" hidden>
