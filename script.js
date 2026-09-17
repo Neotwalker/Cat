@@ -88,6 +88,10 @@ const materials = {
     metalness: 0.02,
   }),
   pupil: new THREE.MeshBasicMaterial({ color: 0x080a09 }),
+  eyelid: new THREE.MeshStandardMaterial({
+    color: 0x535c68,
+    roughness: 0.84,
+  }),
   bone: new THREE.MeshBasicMaterial({ color: 0x70e6ff, wireframe: true }),
 };
 
@@ -202,6 +206,23 @@ function buildEye(bone) {
   const white = makeSphere(0.46, materials.eyeWhite, [1, 1.13, 0.66]);
   bone.add(white);
 
+  // Real eyelids: the eyeball itself never gets squashed during a blink.
+  const upperLid = new THREE.Mesh(
+    new THREE.SphereGeometry(0.468, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2),
+    materials.eyelid,
+  );
+  upperLid.scale.set(1.02, 0.035, 0.68);
+  upperLid.renderOrder = 4;
+  bone.add(upperLid);
+
+  const lowerLid = new THREE.Mesh(
+    new THREE.SphereGeometry(0.468, 40, 18, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    materials.eyelid,
+  );
+  lowerLid.scale.set(1.02, 0.035, 0.68);
+  lowerLid.renderOrder = 4;
+  bone.add(lowerLid);
+
   const iris = new THREE.Mesh(
     new THREE.CircleGeometry(0.235, 40),
     materials.iris,
@@ -224,7 +245,7 @@ function buildEye(bone) {
   shine.position.set(-0.07, 0.08, 0.328);
   bone.add(shine);
 
-  eyeParts.push({ bone, white, iris, pupil, shine });
+  eyeParts.push({ bone, white, iris, pupil, shine, upperLid, lowerLid });
 }
 
 buildEye(leftEyeBone);
@@ -467,9 +488,11 @@ function animate(now) {
   });
 
   const blink = reducedMotion ? 0 : updateBlink(now);
-  const eyeScaleY = 1 - blink * 0.88;
-  eyeParts.forEach(({ bone }) => {
-    bone.scale.y = eyeScaleY;
+  eyeParts.forEach(({ bone, upperLid, lowerLid }) => {
+    bone.scale.y = 1;
+    const lidY = 0.035 + blink * 1.02;
+    upperLid.scale.y = lidY;
+    lowerLid.scale.y = lidY;
   });
 
   rigRoot.position.y = reducedMotion ? 0 : Math.sin(now * 0.00072) * 0.025;
