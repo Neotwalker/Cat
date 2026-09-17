@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import atlasPart1 from './assets/cat2d/v1/micro-01.js';
+import atlasPart2 from './assets/cat2d/v1/micro-02.js';
+import atlasPart3 from './assets/cat2d/v1/micro-03.js';
 
 const root = document.documentElement;
 const stage = document.getElementById('stage');
@@ -9,15 +12,11 @@ const hintText = document.getElementById('hintText');
 
 const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-if (coarsePointer) {
-  hintText.textContent = 'Коснись кота';
-}
-
-const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
 const randomBetween = (min, max) => Math.random() * (max - min) + min;
-const deg = THREE.MathUtils.degToRad;
+
+if (coarsePointer) hintText.textContent = 'Коснись кота';
 
 let renderer;
 
@@ -35,577 +34,158 @@ try {
 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
+renderer.setClearColor(0x000000, 0);
 host.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-3, 3, 3.4, -3.4, 0.1, 100);
+camera.position.set(0, 0, 10);
 
-const camera = new THREE.PerspectiveCamera(27, 1, 0.1, 100);
-camera.position.set(0, 0.35, 9.2);
-camera.lookAt(0, 0.15, 0);
+const atlasBase64 = atlasPart1 + atlasPart2 + atlasPart3;
+const atlasUrl = `data:image/webp;base64,${atlasBase64}`;
+const ATLAS_W = 210;
+const ATLAS_H = 241;
 
-const hemi = new THREE.HemisphereLight(0xdde8ff, 0x161920, 2.1);
-scene.add(hemi);
-
-const key = new THREE.DirectionalLight(0xffffff, 3.3);
-key.position.set(-3.8, 6.5, 7.5);
-scene.add(key);
-
-const fill = new THREE.DirectionalLight(0xb8caff, 1.15);
-fill.position.set(4.8, 2.6, 4.0);
-scene.add(fill);
-
-const rim = new THREE.DirectionalLight(0xffd7d5, 0.65);
-rim.position.set(2.2, 5.5, -4);
-scene.add(rim);
-
-const materials = {
-  fur: new THREE.MeshStandardMaterial({
-    color: 0x5b575b,
-    roughness: 0.76,
-    metalness: 0,
-  }),
-  furDark: new THREE.MeshStandardMaterial({
-    color: 0x403b40,
-    roughness: 0.8,
-  }),
-  furLight: new THREE.MeshStandardMaterial({
-    color: 0x6f696d,
-    roughness: 0.8,
-  }),
-  mouth: new THREE.MeshStandardMaterial({
-    color: 0x3a3034,
-    roughness: 0.72,
-  }),
-  white: new THREE.MeshStandardMaterial({
-    color: 0xf0efeb,
-    roughness: 0.82,
-  }),
-  pink: new THREE.MeshStandardMaterial({
-    color: 0xc9868d,
-    roughness: 0.68,
-  }),
-  eyeWhite: new THREE.MeshStandardMaterial({
-    color: 0xfafaf6,
-    roughness: 0.25,
-  }),
-  iris: new THREE.MeshStandardMaterial({
-    color: 0x78a96d,
-    roughness: 0.35,
-    metalness: 0.02,
-  }),
-  pupil: new THREE.MeshBasicMaterial({ color: 0x080a09 }),
-  eyelid: new THREE.MeshStandardMaterial({
-    color: 0x5b575b,
-    roughness: 0.84,
-  }),
-  bone: new THREE.MeshBasicMaterial({ color: 0x70e6ff, wireframe: true }),
+const atlasRects = {
+  headOpen: [0, 0, 105, 93],
+  headClosed: [105, 0, 105, 86],
+  body: [0, 93, 112, 148],
+  tail: [112, 93, 78, 83],
 };
-
-const makeSphere = (radius, material, scale = [1, 1, 1]) => {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, 40, 28),
-    material,
-  );
-  mesh.scale.set(...scale);
-  return mesh;
-};
-
-const makeCone = (radius, height, material, segments = 3) => (
-  new THREE.Mesh(new THREE.ConeGeometry(radius, height, segments), material)
-);
-
-function makeCapsule(radius, length, material, scale = [1, 1, 1]) {
-  const mesh = new THREE.Mesh(
-    new THREE.CapsuleGeometry(radius, length, 6, 14),
-    material,
-  );
-  mesh.scale.set(...scale);
-  return mesh;
-}
-
-// Smooth rotational profile mesh. Control rings come from the front/side
-// references; Catmull-Rom interpolation removes the faceted "stacked cones" look.
-function catmullScalar(p0, p1, p2, p3, t) {
-  const t2 = t * t;
-  const t3 = t2 * t;
-  return 0.5 * (
-    2 * p1
-    + (-p0 + p2) * t
-    + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
-    + (-p0 + 3 * p1 - 3 * p2 + p3) * t3
-  );
-}
-
-function smoothProfile(profile, subdivisions = 5) {
-  const dense = [];
-  const get = (index) => profile[clamp(index, 0, profile.length - 1)];
-
-  for (let i = 0; i < profile.length - 1; i += 1) {
-    const p0 = get(i - 1);
-    const p1 = get(i);
-    const p2 = get(i + 1);
-    const p3 = get(i + 2);
-
-    for (let step = 0; step < subdivisions; step += 1) {
-      const t = step / subdivisions;
-      dense.push({
-        y: lerp(p1.y, p2.y, t),
-        x: catmullScalar(p0.x || 0, p1.x || 0, p2.x || 0, p3.x || 0, t),
-        rx: Math.max(0.001, catmullScalar(p0.rx, p1.rx, p2.rx, p3.rx, t)),
-        rz: Math.max(0.001, catmullScalar(p0.rz, p1.rz, p2.rz, p3.rz, t)),
-        z: catmullScalar(p0.z || 0, p1.z || 0, p2.z || 0, p3.z || 0, t),
-      });
-    }
-  }
-  dense.push({ ...profile[profile.length - 1] });
-  return dense;
-}
-
-function makeProfileMesh(profile, radialSegments, material, subdivisions = 5) {
-  const smooth = smoothProfile(profile, subdivisions);
-  const geometry = new THREE.BufferGeometry();
-  const positions = [];
-  const uvs = [];
-  const indices = [];
-  const stride = radialSegments + 1;
-
-  smooth.forEach((ring, row) => {
-    for (let i = 0; i <= radialSegments; i += 1) {
-      const u = i / radialSegments;
-      const theta = u * Math.PI * 2;
-      const c = Math.cos(theta);
-      const sn = Math.sin(theta);
-      const x = (ring.x || 0) + ring.rx * c;
-      const z = (ring.z || 0) + ring.rz * sn;
-      positions.push(x, ring.y, z);
-      uvs.push(u, row / Math.max(smooth.length - 1, 1));
-    }
-  });
-
-  for (let row = 0; row < smooth.length - 1; row += 1) {
-    for (let i = 0; i < radialSegments; i += 1) {
-      const a = row * stride + i;
-      const b = a + stride;
-      const c = b + 1;
-      const d = a + 1;
-      indices.push(a, b, d, b, c, d);
-    }
-  }
-
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingSphere();
-
-  return new THREE.Mesh(geometry, material);
-}
-
-function makeEarMesh(material, inner = false) {
-  const shape = new THREE.Shape();
-  const w = inner ? 0.31 : 0.47;
-  const h = inner ? 0.93 : 1.24;
-  const baseY = inner ? -0.37 : -0.44;
-  shape.moveTo(0, h * 0.62);
-  shape.bezierCurveTo(-w * 0.22, h * 0.44, -w * 0.82, h * 0.08, -w, baseY * 0.30);
-  shape.bezierCurveTo(-w * 0.90, baseY * 0.72, -w * 0.52, baseY, 0, baseY);
-  shape.bezierCurveTo(w * 0.52, baseY, w * 0.90, baseY * 0.72, w, baseY * 0.30);
-  shape.bezierCurveTo(w * 0.82, h * 0.08, w * 0.22, h * 0.44, 0, h * 0.62);
-
-  const depth = inner ? 0.055 : 0.17;
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth,
-    steps: 1,
-    bevelEnabled: true,
-    bevelSegments: 4,
-    bevelSize: inner ? 0.025 : 0.055,
-    bevelThickness: inner ? 0.018 : 0.04,
-    curveSegments: 20,
-  });
-  geometry.translate(0, 0, -depth * 0.5);
-  geometry.computeVertexNormals();
-  return new THREE.Mesh(geometry, material);
-}
-
-function addMouthCurve(points) {
-  const curve = new THREE.CatmullRomCurve3(
-    points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
-  );
-  const mesh = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 14, 0.014, 6, false),
-    materials.mouth,
-  );
-  headBone.add(mesh);
-  return mesh;
-}
-
-const rigRoot = new THREE.Bone();
-rigRoot.name = 'ROOT';
-scene.add(rigRoot);
-
-const bodyBone = new THREE.Bone();
-bodyBone.name = 'BODY';
-bodyBone.position.set(0, -1.15, 0);
-rigRoot.add(bodyBone);
-
-const chestBone = new THREE.Bone();
-chestBone.name = 'CHEST';
-chestBone.position.set(0, 0.35, 0.2);
-bodyBone.add(chestBone);
-
-const neckBone = new THREE.Bone();
-neckBone.name = 'NECK';
-neckBone.position.set(0, 1.25, 0);
-bodyBone.add(neckBone);
-
-const headBone = new THREE.Bone();
-headBone.name = 'HEAD';
-headBone.position.set(0, 0.75, 0.02);
-neckBone.add(headBone);
-
-const leftEarBone = new THREE.Bone();
-leftEarBone.name = 'EAR_L';
-leftEarBone.position.set(-0.78, 0.69, -0.02);
-headBone.add(leftEarBone);
-
-const rightEarBone = new THREE.Bone();
-rightEarBone.name = 'EAR_R';
-rightEarBone.position.set(0.78, 0.69, -0.02);
-headBone.add(rightEarBone);
-
-const leftEyeBone = new THREE.Bone();
-leftEyeBone.name = 'EYE_L';
-leftEyeBone.position.set(-0.42, 0.00, 0.90);
-headBone.add(leftEyeBone);
-
-const rightEyeBone = new THREE.Bone();
-rightEyeBone.name = 'EYE_R';
-rightEyeBone.position.set(0.42, 0.00, 0.90);
-headBone.add(rightEyeBone);
-
-const tailBones = [];
-const tailBaseAngles = [-2.72, 0.78, 0.74, 0.56, 0.34];
-let tailParent = bodyBone;
-for (let i = 0; i < 5; i += 1) {
-  const bone = new THREE.Bone();
-  bone.name = i === 4 ? 'TAIL_TIP' : `TAIL_0${i + 1}`;
-  bone.position.set(
-    i === 0 ? -0.82 : 0.54,
-    i === 0 ? -0.62 : 0,
-    i === 0 ? -0.28 : 0,
-  );
-  bone.rotation.z = tailBaseAngles[i];
-  tailParent.add(bone);
-  tailBones.push(bone);
-  tailParent = bone;
-}
-
-// CUSTOM MESH v2 — proportions re-cut directly from the latest mobile/reference comparison.
-const bodyMesh = makeProfileMesh([
-  { y: 1.08, rx: 0.30, rz: 0.48, z: -0.10 },
-  { y: 0.86, rx: 0.50, rz: 0.62, z: -0.06 },
-  { y: 0.56, rx: 0.64, rz: 0.74, z: -0.01 },
-  { y: 0.18, rx: 0.73, rz: 0.84, z: 0.02 },
-  { y: -0.18, rx: 0.82, rz: 0.91, z: 0.03 },
-  { y: -0.55, rx: 0.95, rz: 0.97, z: 0.01 },
-  { y: -0.88, rx: 1.08, rz: 0.98, z: -0.02 },
-  { y: -1.12, rx: 1.06, rz: 0.90, z: -0.06 },
-  { y: -1.31, rx: 0.86, rz: 0.72, z: -0.10 },
-  { y: -1.43, rx: 0.42, rz: 0.38, z: -0.12 },
-], 56, materials.fur);
-bodyMesh.position.set(0, 0.03, -0.04);
-bodyBone.add(bodyMesh);
-
-// Shorter chest bib: broad under the chin, tapering before the forepaws.
-const chestMesh = makeProfileMesh([
-  { y: 0.94, rx: 0.09, rz: 0.06, z: 0.86 },
-  { y: 0.76, rx: 0.35, rz: 0.11, z: 0.92 },
-  { y: 0.48, rx: 0.46, rz: 0.15, z: 0.96 },
-  { y: 0.18, rx: 0.47, rz: 0.17, z: 0.98 },
-  { y: -0.10, rx: 0.41, rz: 0.16, z: 0.97 },
-  { y: -0.34, rx: 0.32, rz: 0.14, z: 0.94 },
-  { y: -0.54, rx: 0.21, rz: 0.11, z: 0.91 },
-  { y: -0.68, rx: 0.07, rz: 0.06, z: 0.88 },
-], 42, materials.white);
-chestBone.add(chestMesh);
-
-function makeFrontLeg(side) {
-  const x = 0.43 * side;
-
-  // Gray upper foreleg begins high at the shoulder and flows into the torso.
-  const upper = makeProfileMesh([
-    { y: 0.68, x: 0.10 * side, rx: 0.30, rz: 0.25, z: 0.00 },
-    { y: 0.42, x: 0.06 * side, rx: 0.27, rz: 0.24, z: 0.01 },
-    { y: 0.10, x: 0.03 * side, rx: 0.23, rz: 0.23, z: 0.02 },
-    { y: -0.24, x: 0.01 * side, rx: 0.21, rz: 0.22, z: 0.03 },
-    { y: -0.58, x: 0.00, rx: 0.20, rz: 0.21, z: 0.03 },
-    { y: -0.76, x: 0.00, rx: 0.19, rz: 0.20, z: 0.03 },
-  ], 34, materials.fur);
-  upper.position.set(x, -0.14, 0.88);
-  bodyBone.add(upper);
-
-  const sock = makeProfileMesh([
-    { y: -0.02, rx: 0.19, rz: 0.20, z: 0.00 },
-    { y: -0.20, rx: 0.20, rz: 0.21, z: 0.01 },
-    { y: -0.46, rx: 0.21, rz: 0.23, z: 0.02 },
-  ], 30, materials.white);
-  sock.position.set(x, -0.78, 0.91);
-  bodyBone.add(sock);
-
-  const paw = makeProfileMesh([
-    { y: 0.12, rx: 0.19, rz: 0.22, z: 0.00 },
-    { y: 0.02, rx: 0.29, rz: 0.34, z: 0.03 },
-    { y: -0.11, rx: 0.32, rz: 0.36, z: 0.04 },
-    { y: -0.19, rx: 0.23, rz: 0.28, z: 0.02 },
-  ], 36, materials.white);
-  paw.position.set(x, -1.46, 0.95);
-  bodyBone.add(paw);
-}
-makeFrontLeg(-1);
-makeFrontLeg(1);
-
-const hindFootLeft = makeProfileMesh([
-  { y: 0.12, rx: 0.18, rz: 0.21, z: 0.00 },
-  { y: 0.01, rx: 0.33, rz: 0.36, z: 0.02 },
-  { y: -0.12, rx: 0.35, rz: 0.37, z: 0.02 },
-  { y: -0.18, rx: 0.23, rz: 0.28, z: 0.00 },
-], 32, materials.white);
-hindFootLeft.position.set(-0.86, -1.37, 0.38);
-bodyBone.add(hindFootLeft);
-
-const hindFootRight = hindFootLeft.clone();
-hindFootRight.geometry = hindFootLeft.geometry.clone();
-hindFootRight.position.x = 0.86;
-bodyBone.add(hindFootRight);
-
-// Smaller, taller head with the cheek width concentrated low, like the reference.
-const headMesh = makeProfileMesh([
-  { y: 1.02, rx: 0.15, rz: 0.23, z: -0.08 },
-  { y: 0.88, rx: 0.52, rz: 0.55, z: -0.04 },
-  { y: 0.70, rx: 0.82, rz: 0.73, z: 0.00 },
-  { y: 0.48, rx: 1.02, rz: 0.86, z: 0.04 },
-  { y: 0.22, rx: 1.12, rz: 0.94, z: 0.08 },
-  { y: -0.02, rx: 1.17, rz: 0.98, z: 0.11 },
-  { y: -0.22, rx: 1.24, rz: 0.98, z: 0.15 },
-  { y: -0.40, rx: 1.28, rz: 0.93, z: 0.20 },
-  { y: -0.56, rx: 1.18, rz: 0.83, z: 0.26 },
-  { y: -0.70, rx: 0.96, rz: 0.70, z: 0.30 },
-  { y: -0.80, rx: 0.48, rz: 0.44, z: 0.31 },
-], 60, materials.fur);
-headMesh.position.set(0, 0.10, -0.02);
-headBone.add(headMesh);
-
-const leftEar = makeEarMesh(materials.fur);
-leftEar.position.set(0, 0.15, 0);
-leftEar.rotation.z = deg(-3);
-leftEarBone.add(leftEar);
-
-const rightEar = makeEarMesh(materials.fur);
-rightEar.position.set(0, 0.15, 0);
-rightEar.rotation.z = deg(3);
-rightEarBone.add(rightEar);
-
-const innerLeft = makeEarMesh(materials.pink, true);
-innerLeft.position.set(0, 0.18, 0.115);
-innerLeft.scale.set(0.92, 0.92, 1);
-leftEarBone.add(innerLeft);
-
-const innerRight = makeEarMesh(materials.pink, true);
-innerRight.position.set(0, 0.18, 0.115);
-innerRight.scale.set(0.92, 0.92, 1);
-rightEarBone.add(innerRight);
-
-const eyeParts = [];
-
-function buildEye(bone) {
-  const socket = makeSphere(0.375, materials.mouth, [1.03, 1.15, 0.57]);
-  socket.position.z = -0.015;
-  bone.add(socket);
-
-  const white = makeSphere(0.345, materials.eyeWhite, [1.00, 1.11, 0.55]);
-  white.position.z = 0.010;
-  bone.add(white);
-
-  const iris = new THREE.Mesh(
-    new THREE.CircleGeometry(0.170, 48),
-    materials.iris,
-  );
-  iris.position.z = 0.202;
-  bone.add(iris);
-
-  const pupil = new THREE.Mesh(
-    new THREE.CircleGeometry(0.066, 36),
-    materials.pupil,
-  );
-  pupil.scale.y = 1.66;
-  pupil.position.z = 0.209;
-  bone.add(pupil);
-
-  const shine = new THREE.Mesh(
-    new THREE.CircleGeometry(0.026, 24),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-  );
-  shine.position.set(-0.055, 0.068, 0.215);
-  bone.add(shine);
-
-  // One moving lid cover instead of compressed hemispheres: no seam while open.
-  const blinkCover = new THREE.Mesh(
-    new THREE.CircleGeometry(0.355, 48),
-    materials.eyelid,
-  );
-  blinkCover.position.z = 0.218;
-  blinkCover.visible = false;
-  bone.add(blinkCover);
-
-  const blinkLine = new THREE.Mesh(
-    new THREE.RingGeometry(0.235, 0.252, 48, 1, 0, Math.PI),
-    materials.mouth,
-  );
-  blinkLine.position.z = 0.222;
-  blinkLine.rotation.z = Math.PI;
-  blinkLine.scale.y = 0.62;
-  blinkLine.visible = false;
-  bone.add(blinkLine);
-
-  eyeParts.push({ bone, white, iris, pupil, shine, blinkCover, blinkLine });
-}
-
-buildEye(leftEyeBone);
-buildEye(rightEyeBone);
-
-const cheekLeft = makeProfileMesh([
-  { y: 0.20, rx: 0.12, rz: 0.10, z: 0.98 },
-  { y: 0.06, rx: 0.34, rz: 0.19, z: 1.05 },
-  { y: -0.12, rx: 0.42, rz: 0.23, z: 1.09 },
-  { y: -0.28, rx: 0.38, rz: 0.22, z: 1.08 },
-  { y: -0.38, rx: 0.18, rz: 0.13, z: 1.03 },
-], 34, materials.white);
-cheekLeft.position.set(-0.24, -0.35, -0.02);
-headBone.add(cheekLeft);
-
-const cheekRight = cheekLeft.clone();
-cheekRight.geometry = cheekLeft.geometry.clone();
-cheekRight.position.x = 0.24;
-headBone.add(cheekRight);
-
-const chin = makeProfileMesh([
-  { y: 0.12, rx: 0.12, rz: 0.08, z: 1.00 },
-  { y: 0.00, rx: 0.30, rz: 0.16, z: 1.05 },
-  { y: -0.14, rx: 0.34, rz: 0.18, z: 1.05 },
-  { y: -0.22, rx: 0.17, rz: 0.10, z: 1.02 },
-], 30, materials.white);
-chin.position.set(0, -0.56, -0.03);
-headBone.add(chin);
-
-const nose = makeSphere(0.145, materials.pink, [1.02, 0.72, 0.66]);
-nose.position.set(0, -0.34, 1.16);
-headBone.add(nose);
-
-addMouthCurve([
-  [-0.01, -0.43, 1.18],
-  [-0.07, -0.52, 1.17],
-  [-0.17, -0.55, 1.14],
-]);
-addMouthCurve([
-  [0.01, -0.43, 1.18],
-  [0.07, -0.52, 1.17],
-  [0.17, -0.55, 1.14],
-]);
-
-function addBrow(points) {
-  const curve = new THREE.CatmullRomCurve3(
-    points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
-  );
-  const brow = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 16, 0.022, 8, false),
-    materials.mouth,
-  );
-  headBone.add(brow);
-}
-addBrow([[-0.68, 0.43, 1.08], [-0.50, 0.51, 1.12], [-0.31, 0.48, 1.10]]);
-addBrow([[0.31, 0.48, 1.10], [0.50, 0.51, 1.12], [0.68, 0.43, 1.08]]);
-
-// Small line whiskers keep the primitive prototype readable as a cat.
-function addWhiskers(side) {
-  const sign = side === 'left' ? -1 : 1;
-  const points = [];
-  [0.04, -0.08, -0.2].forEach((y, index) => {
-    points.push(
-      new THREE.Vector3(sign * 0.36, -0.42 + y, 1.08),
-      new THREE.Vector3(sign * (1.28 + index * 0.08), -0.39 + y * 0.5, 1.03),
-    );
-  });
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({
-    color: 0xe8e8e4,
-    transparent: true,
-    opacity: 0.72,
-  });
-  headBone.add(new THREE.LineSegments(geometry, material));
-}
-addWhiskers('left');
-addWhiskers('right');
-
-tailBones.forEach((bone, index) => {
-  const segment = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.34 - index * 0.025, 0.62, 7, 14),
-    materials.fur,
-  );
-  segment.rotation.z = deg(90);
-  segment.position.x = 0.30;
-  segment.scale.z = 1.08;
-  bone.add(segment);
-});
-
-const skeletonHelper = new THREE.SkeletonHelper(rigRoot);
-skeletonHelper.material.depthTest = false;
-skeletonHelper.material.transparent = true;
-skeletonHelper.material.opacity = 0.9;
-skeletonHelper.visible = false;
-scene.add(skeletonHelper);
-
-debugToggle.addEventListener('click', () => {
-  skeletonHelper.visible = !skeletonHelper.visible;
-  debugToggle.setAttribute('aria-pressed', String(skeletonHelper.visible));
-  debugToggle.textContent = skeletonHelper.visible ? 'Скрыть скелет' : 'Показать скелет';
-});
 
 const state = {
   targetX: 0,
   targetY: 0,
   headX: 0,
   headY: 0,
-  neckX: 0,
-  neckY: 0,
-  eyeX: 0,
-  eyeY: 0,
   pointerInside: false,
   idleSince: performance.now(),
   idleTargetX: 0,
   idleTargetY: 0,
-  nextIdleShift: performance.now() + randomBetween(900, 1800),
-  earFlick: 0,
-  nextEarFlick: performance.now() + randomBetween(2400, 5200),
+  nextIdleShift: performance.now() + randomBetween(1200, 2400),
+  touchAttentionUntil: 0,
   startle: 0,
   startleSide: 0,
-  touchAttentionUntil: 0,
   blinkStart: -1000,
-  blinkDuration: 180,
-  nextBlink: performance.now() + randomBetween(2200, 5000),
+  blinkDuration: 170,
+  nextBlink: performance.now() + randomBetween(2500, 5200),
+  debugFan: false,
 };
+
+const rigRoot = new THREE.Group();
+rigRoot.name = 'ROOT_2D';
+scene.add(rigRoot);
+
+const bodyRig = new THREE.Group();
+bodyRig.name = 'BODY_2D';
+rigRoot.add(bodyRig);
+
+const tailRig = new THREE.Group();
+tailRig.name = 'TAIL_2D';
+bodyRig.add(tailRig);
+
+const headRig = new THREE.Group();
+headRig.name = 'HEAD_2D';
+rigRoot.add(headRig);
+
+let bodyMesh;
+let tailMesh;
+let headOpenMesh;
+let headClosedMesh;
+let ready = false;
+
+function makeCropTexture(base, rect) {
+  const [x, y, w, h] = rect;
+  const texture = base.clone();
+  texture.needsUpdate = true;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.repeat.set(w / ATLAS_W, h / ATLAS_H);
+  texture.offset.set(x / ATLAS_W, 1 - (y + h) / ATLAS_H);
+  return texture;
+}
+
+function makeLayer(base, rect, width, height, renderOrder) {
+  const material = new THREE.MeshBasicMaterial({
+    map: makeCropTexture(base, rect),
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+    depthTest: true,
+    alphaTest: 0.015,
+    toneMapped: false,
+  });
+
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    material,
+  );
+
+  mesh.renderOrder = renderOrder;
+  return mesh;
+}
+
+function buildLayeredCat(baseTexture) {
+  baseTexture.colorSpace = THREE.SRGBColorSpace;
+  baseTexture.magFilter = THREE.LinearFilter;
+  baseTexture.minFilter = THREE.LinearFilter;
+
+  // Tail is deliberately behind the torso, matching the front reference.
+  tailMesh = makeLayer(baseTexture, atlasRects.tail, 2.15, 2.30, 1);
+  tailMesh.position.set(-0.38, 0.04, 0);
+  tailRig.position.set(-1.26, -1.35, -0.15);
+  tailRig.rotation.z = 0.015;
+  tailRig.add(tailMesh);
+
+  // The v1 body asset already contains chest, forelegs, hindquarters and paws.
+  bodyMesh = makeLayer(baseTexture, atlasRects.body, 3.35, 4.43, 2);
+  bodyMesh.position.set(0, -0.08, 0);
+  bodyRig.position.set(0, -1.00, 0);
+  bodyRig.add(bodyMesh);
+
+  // Open/closed heads use the same geometry so blinking never changes silhouette size.
+  const headWidth = 3.72;
+  const headHeight = 3.30;
+
+  headOpenMesh = makeLayer(baseTexture, atlasRects.headOpen, headWidth, headHeight, 4);
+  headClosedMesh = makeLayer(baseTexture, atlasRects.headClosed, headWidth, headHeight, 5);
+  headClosedMesh.material.opacity = 0;
+
+  headRig.position.set(0, 1.42, 0.12);
+  headRig.add(headOpenMesh, headClosedMesh);
+
+  ready = true;
+}
+
+new THREE.TextureLoader().load(
+  atlasUrl,
+  buildLayeredCat,
+  undefined,
+  () => {
+    fallback.hidden = false;
+    fallback.textContent = 'Не удалось загрузить 2.5D-слои кота.';
+  },
+);
 
 function getLookTarget(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
   const centerX = rect.left + rect.width * 0.5;
   const centerY = rect.top + rect.height * 0.43;
-  const dx = clientX - centerX;
-  const dy = clientY - centerY;
 
   return {
-    x: clamp(Math.tanh(dx / Math.max(rect.width * 0.31, 180)), -1, 1),
-    y: clamp(Math.tanh(dy / Math.max(rect.height * 0.31, 170)), -1, 1),
+    x: clamp(
+      Math.tanh((clientX - centerX) / Math.max(rect.width * 0.32, 160)),
+      -1,
+      1,
+    ),
+    y: clamp(
+      Math.tanh((clientY - centerY) / Math.max(rect.height * 0.32, 160)),
+      -1,
+      1,
+    ),
   };
 }
 
@@ -645,7 +225,6 @@ function onPointerDown(event) {
     1,
   );
   state.startle = 1;
-  state.earFlick += state.startleSide >= 0 ? -0.12 : 0.12;
 }
 
 renderer.domElement.addEventListener('pointermove', onPointerMove, { passive: true });
@@ -655,24 +234,17 @@ window.addEventListener('blur', onPointerLeave);
 
 function chooseIdleLook(now) {
   if (now < state.nextIdleShift) return;
-  state.idleTargetX = randomBetween(-0.34, 0.34);
-  state.idleTargetY = randomBetween(-0.16, 0.14);
-  state.nextIdleShift = now + randomBetween(1500, 3600);
-}
 
-function updateEarFlick(now, idle) {
-  if (now >= state.nextEarFlick) {
-    state.earFlick = randomBetween(-0.09, 0.09);
-    state.nextEarFlick = now + randomBetween(idle ? 2200 : 4300, idle ? 5200 : 8500);
-  }
-  state.earFlick = lerp(state.earFlick, 0, 0.055);
+  state.idleTargetX = randomBetween(-0.24, 0.24);
+  state.idleTargetY = randomBetween(-0.12, 0.10);
+  state.nextIdleShift = now + randomBetween(1800, 4200);
 }
 
 function updateBlink(now) {
   if (now >= state.nextBlink) {
     state.blinkStart = now;
-    state.blinkDuration = Math.random() < 0.17 ? 330 : 180;
-    state.nextBlink = now + randomBetween(2700, 6100);
+    state.blinkDuration = Math.random() < 0.16 ? 300 : 165;
+    state.nextBlink = now + randomBetween(2800, 6200);
   }
 
   const elapsed = now - state.blinkStart;
@@ -687,15 +259,26 @@ function updateBlink(now) {
   return Math.sin(Math.PI * clamp(elapsed / state.blinkDuration, 0, 1));
 }
 
+debugToggle.textContent = 'Разложить слои';
+debugToggle.setAttribute('aria-label', 'Показать устройство 2.5D-слоёв');
+debugToggle.addEventListener('click', () => {
+  state.debugFan = !state.debugFan;
+  debugToggle.setAttribute('aria-pressed', String(state.debugFan));
+  debugToggle.textContent = state.debugFan ? 'Собрать кота' : 'Разложить слои';
+});
+
 function animate(now) {
-  const idleFor = now - state.idleSince;
   const touchTracking = coarsePointer && now < state.touchAttentionUntil;
-  const idle = !touchTracking && (coarsePointer || !state.pointerInside || idleFor > 2300);
+  const idle = !touchTracking && (
+    coarsePointer
+    || !state.pointerInside
+    || now - state.idleSince > 2300
+  );
 
   if (idle && !reducedMotion) {
     chooseIdleLook(now);
-    state.targetX = state.idleTargetX + Math.sin(now * 0.00037) * 0.055;
-    state.targetY = state.idleTargetY + Math.cos(now * 0.00052) * 0.035;
+    state.targetX = state.idleTargetX + Math.sin(now * 0.00034) * 0.035;
+    state.targetY = state.idleTargetY + Math.cos(now * 0.00047) * 0.022;
   }
 
   if (reducedMotion) {
@@ -703,75 +286,57 @@ function animate(now) {
     state.targetY = 0;
   }
 
-  updateEarFlick(now, idle);
-
-  // Eyes lead, head catches up, neck follows last.
-  state.eyeX = lerp(state.eyeX, state.targetX, reducedMotion ? 0.03 : 0.26);
-  state.eyeY = lerp(state.eyeY, state.targetY, reducedMotion ? 0.03 : 0.26);
   state.headX = lerp(state.headX, state.targetX, reducedMotion ? 0.025 : 0.075);
   state.headY = lerp(state.headY, state.targetY, reducedMotion ? 0.025 : 0.075);
-  state.neckX = lerp(state.neckX, state.targetX, reducedMotion ? 0.02 : 0.042);
-  state.neckY = lerp(state.neckY, state.targetY, reducedMotion ? 0.02 : 0.042);
-  state.startle = lerp(state.startle, 0, 0.1);
+  state.startle = lerp(state.startle, 0, 0.095);
 
-  const x = clamp(state.headX, -1, 1);
-  const y = clamp(state.headY, -1, 1);
-  const ex = clamp(state.eyeX, -1, 1);
-  const ey = clamp(state.eyeY, -1, 1);
-  const startle = clamp(state.startle, 0, 1);
+  if (ready) {
+    const x = clamp(state.headX, -1, 1);
+    const y = clamp(state.headY, -1, 1);
+    const startle = clamp(state.startle, 0, 1);
 
-  headBone.rotation.y = x * 0.28 - state.startleSide * startle * 0.035;
-  headBone.rotation.x = -y * 0.18 + startle * 0.018;
-  headBone.rotation.z = -x * 0.035 - state.startleSide * startle * 0.018;
+    const floatY = reducedMotion ? 0 : Math.sin(now * 0.00072) * 0.018;
+    const breath = reducedMotion ? 1 : 1 + Math.sin(now * 0.00112) * 0.006;
 
-  neckBone.rotation.y = state.neckX * 0.105;
-  neckBone.rotation.x = -state.neckY * 0.065;
+    const fan = state.debugFan ? 1 : 0;
 
-  leftEyeBone.rotation.y = ex * 0.34;
-  rightEyeBone.rotation.y = ex * 0.34;
-  leftEyeBone.rotation.x = -ey * 0.24;
-  rightEyeBone.rotation.x = -ey * 0.24;
+    rigRoot.position.y = floatY;
+    rigRoot.position.x = -state.startleSide * startle * 0.018;
 
-  const earPulse = reducedMotion ? 0 : Math.sin(now * 0.00175) * 0.02;
-  leftEarBone.rotation.z = deg(-8) - x * 0.065 + y * 0.022 + earPulse + state.earFlick + startle * 0.09;
-  rightEarBone.rotation.z = deg(8) - x * 0.065 - y * 0.022 - earPulse + state.earFlick * 0.45 - startle * 0.09;
+    bodyRig.position.x = lerp(bodyRig.position.x, fan ? -0.45 : 0, 0.12);
+    bodyRig.position.y = -1.00 + Math.sin(now * 0.00112) * (reducedMotion ? 0 : 0.012);
+    bodyRig.rotation.z = -x * 0.007 + state.startleSide * startle * 0.008;
+    bodyRig.scale.set(1, breath, 1);
 
-  const breath = reducedMotion ? 1 : 1 + Math.sin(now * 0.00115) * 0.012 - startle * 0.012;
-  bodyMesh.scale.set(1, breath, 1);
-  chestMesh.scale.set(1, breath, 1);
-  bodyBone.position.y = -1.02 + (reducedMotion ? 0 : Math.sin(now * 0.00115) * 0.025) + startle * 0.018;
-  bodyBone.rotation.z = -x * 0.008 + state.startleSide * startle * 0.01;
+    headRig.position.x = lerp(
+      headRig.position.x,
+      (fan ? 0.52 : 0) + x * 0.105 - state.startleSide * startle * 0.04,
+      0.16,
+    );
+    headRig.position.y = lerp(
+      headRig.position.y,
+      1.42 - y * 0.075 + startle * 0.025,
+      0.16,
+    );
+    headRig.rotation.z = -x * 0.045 - state.startleSide * startle * 0.025;
+    headRig.scale.setScalar(1 + startle * 0.008);
 
-  tailBones.forEach((bone, index) => {
-    const phase = now * (0.0010 + index * 0.00004) - index * 0.54;
-    const amplitude = 0.12 - index * 0.012;
-    bone.rotation.z =
-      tailBaseAngles[index]
-      + Math.sin(phase) * amplitude
-      + Math.sin(now * 0.00041 - index * 0.28) * 0.045
-      + x * 0.026
-      + state.startleSide * startle * (0.11 - index * 0.015);
-  });
+    tailRig.position.x = lerp(tailRig.position.x, fan ? -1.82 : -1.26, 0.12);
+    tailRig.rotation.z =
+      0.015
+      + (reducedMotion ? 0 : Math.sin(now * 0.00082) * 0.045)
+      + x * 0.018
+      + state.startleSide * startle * 0.055;
 
-  const blink = reducedMotion ? 0 : updateBlink(now);
-  eyeParts.forEach(({ bone, blinkCover, blinkLine }) => {
-    bone.scale.y = 1;
-    const active = blink > 0.01;
-    blinkCover.visible = active;
-    blinkLine.visible = blink > 0.58;
-    if (active) {
-      blinkCover.scale.set(1, Math.max(0.001, blink), 1);
-      blinkCover.position.y = 0.34 * (1 - blink);
-    }
-  });
+    const blink = reducedMotion ? 0 : updateBlink(now);
+    headOpenMesh.material.opacity = 1 - blink;
+    headClosedMesh.material.opacity = blink;
 
-  rigRoot.position.y = reducedMotion ? 0 : Math.sin(now * 0.00072) * 0.025;
-  rigRoot.position.x = -state.startleSide * startle * 0.028;
-
-  const stageX = reducedMotion ? 0 : x * -4.5;
-  const stageY = reducedMotion ? 0 : y * -3;
-  root.style.setProperty('--stage-x', `${stageX}px`);
-  root.style.setProperty('--stage-y', `${stageY}px`);
+    const stageX = reducedMotion ? 0 : x * -3.0;
+    const stageY = reducedMotion ? 0 : y * -2.0;
+    root.style.setProperty('--stage-x', `${stageX}px`);
+    root.style.setProperty('--stage-y', `${stageY}px`);
+  }
 
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
@@ -780,18 +345,20 @@ function animate(now) {
 function resize() {
   const width = Math.max(host.clientWidth, 1);
   const height = Math.max(host.clientHeight, 1);
+  const aspect = width / height;
+  const viewHeight = width < 600 ? 7.35 : 6.85;
+  const halfH = viewHeight / 2;
+  const halfW = halfH * aspect;
 
   renderer.setSize(width, height, false);
-  camera.aspect = width / height;
-
-  // Keep roughly the same framing on narrow screens.
-  camera.position.z = width < 600 ? 11.2 : 10.0;
-  camera.position.y = width < 600 ? -0.02 : 0.22;
+  camera.left = -halfW;
+  camera.right = halfW;
+  camera.top = halfH;
+  camera.bottom = -halfH;
   camera.updateProjectionMatrix();
 }
 
 const resizeObserver = new ResizeObserver(resize);
 resizeObserver.observe(host);
 resize();
-
 requestAnimationFrame(animate);
