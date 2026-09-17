@@ -296,6 +296,9 @@ function animate(now) {
   root.style.setProperty('--glow-x', `${glowX}px`);
   root.style.setProperty('--glow-y', `${glowY}px`);
   root.style.setProperty('--attention', attention.toFixed(4));
+  root.style.setProperty('--attention-light-opacity', (0.25 + attention * 0.4).toFixed(4));
+  root.style.setProperty('--attention-halo-scale', (0.92 + attention * 0.12).toFixed(4));
+  root.style.setProperty('--attention-halo-opacity', (0.35 + attention * 0.45).toFixed(4));
 
   blink(now);
   requestAnimationFrame(animate);
