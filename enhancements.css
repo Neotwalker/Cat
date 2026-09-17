@@ -15,6 +15,9 @@
   --glow-x: 0px;
   --glow-y: 0px;
   --attention: 0;
+  --attention-light-opacity: .25;
+  --attention-halo-scale: .92;
+  --attention-halo-opacity: .35;
 }
 
 .hero__stage {
@@ -71,7 +74,7 @@
   z-index: 1;
   border-radius: 48%;
   background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.055), transparent 56%);
-  opacity: calc(.25 + var(--attention) * .4);
+  opacity: var(--attention-light-opacity);
   pointer-events: none;
 }
 
@@ -191,8 +194,8 @@
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(151, 186, 255, .09), transparent 67%);
-  transform: translate(-50%, -50%) scale(calc(.92 + var(--attention) * .12));
-  opacity: calc(.35 + var(--attention) * .45);
+  transform: translate(-50%, -50%) scale(var(--attention-halo-scale));
+  opacity: var(--attention-halo-opacity);
   filter: blur(18px);
   pointer-events: none;
 }
