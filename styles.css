@@ -273,7 +273,11 @@ button { font: inherit; }
   .hero {
     grid-template-columns: 1fr;
     min-height: auto;
-    padding: 38px 24px 22px;
+    padding:
+      calc(38px + env(safe-area-inset-top, 0px))
+      calc(24px + env(safe-area-inset-right, 0px))
+      calc(22px + env(safe-area-inset-bottom, 0px))
+      calc(24px + env(safe-area-inset-left, 0px));
     gap: 10px;
   }
 
@@ -284,7 +288,7 @@ button { font: inherit; }
 
   .hero__copy {
     max-width: 760px;
-    margin: 7vh auto 0;
+    margin: 2vh auto 0;
     text-align: center;
   }
 
@@ -306,8 +310,11 @@ button { font: inherit; }
 }
 
 @media (max-width: 560px) {
-  .hero { padding-inline: 18px; }
-  .hero__copy { margin-top: 5vh; }
+  .hero {
+    padding-left: calc(18px + env(safe-area-inset-left, 0px));
+    padding-right: calc(18px + env(safe-area-inset-right, 0px));
+  }
+  .hero__copy { margin-top: 1vh; }
   .hero__kicker { margin-bottom: 18px; font-size: 10px; }
   .hero__title { font-size: clamp(44px, 14vw, 66px); }
   .hero__text { margin-top: 22px; font-size: 15px; }
