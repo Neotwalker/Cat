@@ -70,6 +70,14 @@ const materials = {
     color: 0x3f4652,
     roughness: 0.8,
   }),
+  furLight: new THREE.MeshStandardMaterial({
+    color: 0x717a87,
+    roughness: 0.8,
+  }),
+  mouth: new THREE.MeshStandardMaterial({
+    color: 0x3a3034,
+    roughness: 0.72,
+  }),
   white: new THREE.MeshStandardMaterial({
     color: 0xf0efeb,
     roughness: 0.82,
@@ -104,9 +112,30 @@ const makeSphere = (radius, material, scale = [1, 1, 1]) => {
   return mesh;
 };
 
-const makeCone = (radius, height, material) => (
-  new THREE.Mesh(new THREE.ConeGeometry(radius, height, 4), material)
+const makeCone = (radius, height, material, segments = 3) => (
+  new THREE.Mesh(new THREE.ConeGeometry(radius, height, segments), material)
 );
+
+function makeCapsule(radius, length, material, scale = [1, 1, 1]) {
+  const mesh = new THREE.Mesh(
+    new THREE.CapsuleGeometry(radius, length, 6, 14),
+    material,
+  );
+  mesh.scale.set(...scale);
+  return mesh;
+}
+
+function addMouthCurve(points) {
+  const curve = new THREE.CatmullRomCurve3(
+    points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+  );
+  const mesh = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, 14, 0.014, 6, false),
+    materials.mouth,
+  );
+  headBone.add(mesh);
+  return mesh;
+}
 
 const rigRoot = new THREE.Bone();
 rigRoot.name = 'ROOT';
@@ -134,115 +163,176 @@ neckBone.add(headBone);
 
 const leftEarBone = new THREE.Bone();
 leftEarBone.name = 'EAR_L';
-leftEarBone.position.set(-0.78, 0.72, 0.02);
+leftEarBone.position.set(-0.84, 0.72, -0.02);
 headBone.add(leftEarBone);
 
 const rightEarBone = new THREE.Bone();
 rightEarBone.name = 'EAR_R';
-rightEarBone.position.set(0.78, 0.72, 0.02);
+rightEarBone.position.set(0.84, 0.72, -0.02);
 headBone.add(rightEarBone);
 
 const leftEyeBone = new THREE.Bone();
 leftEyeBone.name = 'EYE_L';
-leftEyeBone.position.set(-0.48, 0.08, 0.85);
+leftEyeBone.position.set(-0.50, 0.08, 0.90);
 headBone.add(leftEyeBone);
 
 const rightEyeBone = new THREE.Bone();
 rightEyeBone.name = 'EYE_R';
-rightEyeBone.position.set(0.48, 0.08, 0.85);
+rightEyeBone.position.set(0.50, 0.08, 0.90);
 headBone.add(rightEyeBone);
 
 const tailBones = [];
+const tailBaseAngles = [-0.62, -0.22, 0.08, 0.22, 0.18];
 let tailParent = bodyBone;
-for (let i = 0; i < 4; i += 1) {
+for (let i = 0; i < 5; i += 1) {
   const bone = new THREE.Bone();
-  bone.name = i === 3 ? 'TAIL_TIP' : `TAIL_0${i + 1}`;
-  bone.position.set(i === 0 ? 0.92 : 0.58, i === 0 ? -0.42 : 0.02, i === 0 ? -0.38 : 0);
+  bone.name = i === 4 ? 'TAIL_TIP' : `TAIL_0${i + 1}`;
+  bone.position.set(
+    i === 0 ? 0.98 : 0.54,
+    i === 0 ? -0.68 : 0,
+    i === 0 ? -0.34 : 0,
+  );
+  bone.rotation.z = tailBaseAngles[i];
   tailParent.add(bone);
   tailBones.push(bone);
   tailParent = bone;
 }
 
-// Temporary geometry. The next stage will replace these shapes with a custom mesh.
-const bodyMesh = makeSphere(1, materials.fur, [1.28, 1.48, 1.04]);
-bodyMesh.position.set(0, 0, 0);
+// Shape pass v1: build a soft, front-facing cartoon silhouette from layered 3D volumes.
+const shoulderMesh = makeSphere(0.92, materials.fur, [1.18, 0.82, 0.95]);
+shoulderMesh.position.set(0, 0.58, -0.02);
+bodyBone.add(shoulderMesh);
+
+const bodyMesh = makeSphere(1, materials.fur, [1.18, 1.34, 1.00]);
+bodyMesh.position.set(0, -0.08, 0);
 bodyBone.add(bodyMesh);
 
-const chestMesh = makeSphere(0.78, materials.white, [0.82, 1.25, 0.42]);
-chestMesh.position.set(0, -0.08, 0.88);
+const bellyMesh = makeSphere(0.93, materials.fur, [1.34, 0.98, 1.06]);
+bellyMesh.position.set(0, -0.68, 0.02);
+bodyBone.add(bellyMesh);
+
+const chestMesh = makeSphere(0.80, materials.white, [0.78, 1.16, 0.46]);
+chestMesh.position.set(0, -0.04, 0.88);
 chestBone.add(chestMesh);
 
-const headMesh = makeSphere(1, materials.fur, [1.37, 1.16, 1.03]);
-headMesh.position.set(0, 0.02, 0);
+const chestTuftTop = makeSphere(0.34, materials.white, [1.15, 0.54, 0.58]);
+chestTuftTop.position.set(0, 0.54, 1.02);
+chestBone.add(chestTuftTop);
+
+const chestTuftBottom = makeSphere(0.40, materials.white, [0.96, 0.72, 0.54]);
+chestTuftBottom.position.set(0, -0.68, 0.96);
+chestBone.add(chestTuftBottom);
+
+const frontPawLeft = makeCapsule(0.22, 0.86, materials.fur, [0.95, 1, 0.86]);
+frontPawLeft.position.set(-0.43, -0.86, 0.83);
+bodyBone.add(frontPawLeft);
+
+const frontPawRight = makeCapsule(0.22, 0.86, materials.fur, [0.95, 1, 0.86]);
+frontPawRight.position.set(0.43, -0.86, 0.83);
+bodyBone.add(frontPawRight);
+
+const frontFootLeft = makeSphere(0.29, materials.fur, [1.02, 0.58, 1.24]);
+frontFootLeft.position.set(-0.43, -1.36, 0.91);
+bodyBone.add(frontFootLeft);
+
+const frontFootRight = makeSphere(0.29, materials.fur, [1.02, 0.58, 1.24]);
+frontFootRight.position.set(0.43, -1.36, 0.91);
+bodyBone.add(frontFootRight);
+
+const hindFootLeft = makeSphere(0.42, materials.fur, [1.12, 0.56, 1.34]);
+hindFootLeft.position.set(-0.88, -1.25, 0.38);
+bodyBone.add(hindFootLeft);
+
+const hindFootRight = makeSphere(0.42, materials.fur, [1.12, 0.56, 1.34]);
+hindFootRight.position.set(0.88, -1.25, 0.38);
+bodyBone.add(hindFootRight);
+
+// Head: cranium + side cheek volumes create a wider Disney-like silhouette without a single-sphere look.
+const headMesh = makeSphere(1, materials.fur, [1.43, 1.20, 1.08]);
+headMesh.position.set(0, 0.08, 0);
 headBone.add(headMesh);
 
-const forehead = makeSphere(0.72, materials.furDark, [0.72, 0.38, 0.18]);
-forehead.position.set(0, 0.58, 0.88);
+const skullTop = makeSphere(0.74, materials.furLight, [1.18, 0.60, 0.72]);
+skullTop.position.set(0, 0.58, 0.18);
+headBone.add(skullTop);
+
+const faceSideLeft = makeSphere(0.64, materials.fur, [1.03, 0.80, 0.76]);
+faceSideLeft.position.set(-0.62, -0.22, 0.36);
+headBone.add(faceSideLeft);
+
+const faceSideRight = makeSphere(0.64, materials.fur, [1.03, 0.80, 0.76]);
+faceSideRight.position.set(0.62, -0.22, 0.36);
+headBone.add(faceSideRight);
+
+const forehead = makeSphere(0.66, materials.furDark, [0.64, 0.30, 0.16]);
+forehead.position.set(0, 0.62, 0.93);
 headBone.add(forehead);
 
-const leftEar = makeCone(0.55, 1.32, materials.fur);
-leftEar.position.set(0, 0.44, 0);
-leftEar.rotation.z = deg(-4);
+const leftEar = makeCone(0.60, 1.44, materials.fur, 3);
+leftEar.position.set(0, 0.49, 0);
+leftEar.scale.set(0.96, 1, 0.58);
+leftEar.rotation.z = deg(-3);
 leftEarBone.add(leftEar);
 
-const rightEar = makeCone(0.55, 1.32, materials.fur);
-rightEar.position.set(0, 0.44, 0);
-rightEar.rotation.z = deg(4);
+const rightEar = makeCone(0.60, 1.44, materials.fur, 3);
+rightEar.position.set(0, 0.49, 0);
+rightEar.scale.set(0.96, 1, 0.58);
+rightEar.rotation.z = deg(3);
 rightEarBone.add(rightEar);
 
-const innerLeft = makeCone(0.34, 0.91, materials.pink);
-innerLeft.position.set(0, 0.43, 0.18);
-innerLeft.scale.set(0.68, 0.78, 0.35);
+const innerLeft = makeCone(0.39, 1.02, materials.pink, 3);
+innerLeft.position.set(0, 0.48, 0.20);
+innerLeft.scale.set(0.72, 0.82, 0.30);
 leftEarBone.add(innerLeft);
 
-const innerRight = makeCone(0.34, 0.91, materials.pink);
-innerRight.position.set(0, 0.43, 0.18);
-innerRight.scale.set(0.68, 0.78, 0.35);
+const innerRight = makeCone(0.39, 1.02, materials.pink, 3);
+innerRight.position.set(0, 0.48, 0.20);
+innerRight.scale.set(0.72, 0.82, 0.30);
 rightEarBone.add(innerRight);
 
 const eyeParts = [];
 
 function buildEye(bone) {
-  const white = makeSphere(0.46, materials.eyeWhite, [1, 1.13, 0.66]);
+  const white = makeSphere(0.51, materials.eyeWhite, [1.02, 1.17, 0.70]);
   bone.add(white);
 
   // Real eyelids: the eyeball itself never gets squashed during a blink.
   const upperLid = new THREE.Mesh(
-    new THREE.SphereGeometry(0.468, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.SphereGeometry(0.518, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2),
     materials.eyelid,
   );
-  upperLid.scale.set(1.02, 0.035, 0.68);
+  upperLid.scale.set(1.04, 0.035, 0.72);
   upperLid.renderOrder = 4;
   bone.add(upperLid);
 
   const lowerLid = new THREE.Mesh(
-    new THREE.SphereGeometry(0.468, 40, 18, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    new THREE.SphereGeometry(0.518, 40, 18, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
     materials.eyelid,
   );
-  lowerLid.scale.set(1.02, 0.035, 0.68);
+  lowerLid.scale.set(1.04, 0.035, 0.72);
   lowerLid.renderOrder = 4;
   bone.add(lowerLid);
 
   const iris = new THREE.Mesh(
-    new THREE.CircleGeometry(0.235, 40),
+    new THREE.CircleGeometry(0.275, 48),
     materials.iris,
   );
-  iris.position.z = 0.315;
+  iris.position.z = 0.365;
   bone.add(iris);
 
   const pupil = new THREE.Mesh(
-    new THREE.CircleGeometry(0.085, 32),
+    new THREE.CircleGeometry(0.098, 36),
     materials.pupil,
   );
-  pupil.scale.y = 1.65;
-  pupil.position.z = 0.322;
+  pupil.scale.y = 1.72;
+  pupil.position.z = 0.374;
   bone.add(pupil);
 
   const shine = new THREE.Mesh(
-    new THREE.CircleGeometry(0.032, 20),
+    new THREE.CircleGeometry(0.040, 24),
     new THREE.MeshBasicMaterial({ color: 0xffffff }),
   );
-  shine.position.set(-0.07, 0.08, 0.328);
+  shine.position.set(-0.085, 0.105, 0.382);
   bone.add(shine);
 
   eyeParts.push({ bone, white, iris, pupil, shine, upperLid, lowerLid });
@@ -251,17 +341,32 @@ function buildEye(bone) {
 buildEye(leftEyeBone);
 buildEye(rightEyeBone);
 
-const cheekLeft = makeSphere(0.48, materials.white, [1.02, 0.7, 0.55]);
-cheekLeft.position.set(-0.29, -0.43, 0.86);
+const cheekLeft = makeSphere(0.54, materials.white, [1.05, 0.72, 0.64]);
+cheekLeft.position.set(-0.31, -0.46, 0.94);
 headBone.add(cheekLeft);
 
-const cheekRight = makeSphere(0.48, materials.white, [1.02, 0.7, 0.55]);
-cheekRight.position.set(0.29, -0.43, 0.86);
+const cheekRight = makeSphere(0.54, materials.white, [1.05, 0.72, 0.64]);
+cheekRight.position.set(0.31, -0.46, 0.94);
 headBone.add(cheekRight);
 
-const nose = makeSphere(0.15, materials.pink, [1.0, 0.72, 0.62]);
-nose.position.set(0, -0.37, 1.25);
+const chin = makeSphere(0.47, materials.white, [0.90, 0.58, 0.58]);
+chin.position.set(0, -0.68, 0.93);
+headBone.add(chin);
+
+const nose = makeSphere(0.145, materials.pink, [1.02, 0.72, 0.66]);
+nose.position.set(0, -0.38, 1.33);
 headBone.add(nose);
+
+addMouthCurve([
+  [-0.01, -0.47, 1.31],
+  [-0.08, -0.58, 1.29],
+  [-0.20, -0.61, 1.25],
+]);
+addMouthCurve([
+  [0.01, -0.47, 1.31],
+  [0.08, -0.58, 1.29],
+  [0.20, -0.61, 1.25],
+]);
 
 // Small line whiskers keep the primitive prototype readable as a cat.
 function addWhiskers(side) {
@@ -286,11 +391,12 @@ addWhiskers('right');
 
 tailBones.forEach((bone, index) => {
   const segment = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.17 - index * 0.018, 0.54, 5, 10),
+    new THREE.CapsuleGeometry(0.24 - index * 0.018, 0.56, 6, 12),
     materials.fur,
   );
   segment.rotation.z = deg(90);
-  segment.position.x = 0.29;
+  segment.position.x = 0.30;
+  segment.scale.z = 1.08;
   bone.add(segment);
 });
 
@@ -472,8 +578,10 @@ function animate(now) {
   rightEarBone.rotation.z = deg(8) - x * 0.065 - y * 0.022 - earPulse + state.earFlick * 0.45 - startle * 0.09;
 
   const breath = reducedMotion ? 1 : 1 + Math.sin(now * 0.00115) * 0.012 - startle * 0.012;
-  bodyMesh.scale.set(1.28, 1.48 * breath, 1.04);
-  chestMesh.scale.set(0.82, 1.25 * breath, 0.42);
+  shoulderMesh.scale.set(1.18, 0.82 * breath, 0.95);
+  bodyMesh.scale.set(1.18, 1.34 * breath, 1.00);
+  bellyMesh.scale.set(1.34, 0.98 * breath, 1.06);
+  chestMesh.scale.set(0.78, 1.16 * breath, 0.46);
   bodyBone.position.y = -1.15 + (reducedMotion ? 0 : Math.sin(now * 0.00115) * 0.025) + startle * 0.018;
   bodyBone.rotation.z = -x * 0.008 + state.startleSide * startle * 0.01;
 
@@ -481,7 +589,8 @@ function animate(now) {
     const phase = now * (0.0010 + index * 0.00004) - index * 0.54;
     const amplitude = 0.12 - index * 0.012;
     bone.rotation.z =
-      Math.sin(phase) * amplitude
+      tailBaseAngles[index]
+      + Math.sin(phase) * amplitude
       + Math.sin(now * 0.00041 - index * 0.28) * 0.045
       + x * 0.026
       + state.startleSide * startle * (0.11 - index * 0.015);
