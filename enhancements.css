@@ -26,6 +26,10 @@
     rotateZ(var(--head-rz));
 }
 
+.ear--right {
+  transform: scaleX(-1) rotate(var(--ear-right));
+}
+
 .head-shape::before {
   content: '';
   position: absolute;
@@ -75,12 +79,12 @@
 }
 
 .whiskers--left {
-  transform: rotate(calc(var(--whisker-shift) * -1));
+  transform: rotate(var(--whisker-shift));
   transform-origin: right center;
 }
 
 .whiskers--right {
-  transform: scaleX(-1) rotate(calc(var(--whisker-shift) * -1));
+  transform: scaleX(-1) rotate(var(--whisker-shift));
   transform-origin: left center;
 }
 
