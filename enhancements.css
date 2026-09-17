@@ -6,11 +6,32 @@
   --tail-angle: 12deg;
   --tail-sway: 0deg;
   --pupil-scale: 1;
+  --eye-open: 1;
+  --brow-lift: 0px;
+  --brow-tilt: 0deg;
   --whisker-shift: 0deg;
+  --scene-x: 0px;
+  --scene-y: 0px;
+  --glow-x: 0px;
+  --glow-y: 0px;
+  --attention: 0;
+}
+
+.hero__stage {
+  transform: translate3d(var(--scene-x), var(--scene-y), 0);
+  will-change: transform;
+}
+
+.hero__glow--one {
+  transform: translate3d(var(--glow-x), var(--glow-y), 0);
+  will-change: transform;
 }
 
 .cat-wrap {
   transform: translate3d(var(--body-x), var(--body-y), 0) rotate(var(--body-rz));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .cat-body {
@@ -43,6 +64,17 @@
   pointer-events: none;
 }
 
+.head-shape::after {
+  content: '';
+  position: absolute;
+  inset: 5% 7% 5%;
+  z-index: 1;
+  border-radius: 48%;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.055), transparent 56%);
+  opacity: calc(.25 + var(--attention) * .4);
+  pointer-events: none;
+}
+
 .forehead-stripe {
   position: absolute;
   z-index: 3;
@@ -58,12 +90,33 @@
 
 .eye {
   filter: drop-shadow(0 4px 10px rgba(0,0,0,.08));
+  transform-origin: 50% 54%;
+}
+
+.eye--left {
+  transform: rotate(3deg) scaleY(var(--eye-open));
+}
+
+.eye--right {
+  transform: rotate(-3deg) scaleY(var(--eye-open));
 }
 
 .iris {
   transform:
     translate(calc(-50% + var(--eye-x)), calc(-50% + var(--eye-y)))
     scale(var(--pupil-scale));
+}
+
+.brow--left {
+  transform:
+    translateY(var(--brow-lift))
+    rotate(calc(-10deg + var(--brow-tilt)));
+}
+
+.brow--right {
+  transform:
+    translateY(var(--brow-lift))
+    rotate(calc(10deg + var(--brow-tilt)));
 }
 
 .nose::after {
@@ -120,7 +173,28 @@
 
 .cat-shadow {
   transform: translateX(calc(-50% + var(--body-x)));
-  transition: opacity .35s ease;
+  transition: opacity .35s ease, transform .35s ease;
+}
+
+.cat-wrap.is-poked .cat-shadow {
+  opacity: .72;
+  transform: translateX(calc(-50% + var(--body-x))) scaleX(.94);
+}
+
+.cat-wrap::after {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  left: 50%;
+  top: 41%;
+  width: 48%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(151, 186, 255, .09), transparent 67%);
+  transform: translate(-50%, -50%) scale(calc(.92 + var(--attention) * .12));
+  opacity: calc(.35 + var(--attention) * .45);
+  filter: blur(18px);
+  pointer-events: none;
 }
 
 @media (max-width: 960px) {
@@ -129,9 +203,38 @@
   }
 }
 
+@media (pointer: coarse) {
+  .cat-wrap {
+    cursor: default;
+  }
+
+  .hero__hint {
+    display: flex;
+  }
+}
+
+@media (max-width: 560px) and (pointer: coarse) {
+  .hero__hint {
+    display: flex;
+    margin-top: 20px;
+    font-size: 0;
+  }
+
+  .hero__hint::after {
+    content: 'Коснись кота';
+    font-size: 12px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cat-tail,
-  .cat-body {
+  .cat-body,
+  .hero__stage,
+  .hero__glow--one {
     will-change: auto;
+  }
+
+  .cat-wrap {
+    cursor: default;
   }
 }
