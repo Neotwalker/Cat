@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#090b10" />
+  <title>Cursor Cat</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="hero" id="hero">
+    <div class="hero__glow hero__glow--one"></div>
+    <div class="hero__glow hero__glow--two"></div>
+
+    <section class="hero__copy">
+      <p class="hero__kicker">Interactive character experiment</p>
+      <h1 class="hero__title">Он правда<br />следит за тобой.</h1>
+      <p class="hero__text">
+        Перемещай курсор по экрану. Глаза реагируют первыми, затем кот мягко доворачивает голову.
+      </p>
+      <p class="hero__hint"><span></span> Двигай мышью</p>
+    </section>
+
+    <section class="hero__stage" aria-label="Интерактивный кот">
+      <div class="cat-wrap" id="catWrap">
+        <div class="cat-shadow"></div>
+
+        <div class="cat-body" aria-hidden="true">
+          <div class="cat-chest"></div>
+        </div>
+
+        <div class="cat-head" id="catHead" aria-hidden="true">
+          <div class="ear ear--left" id="earLeft"><div class="ear__inner"></div></div>
+          <div class="ear ear--right" id="earRight"><div class="ear__inner"></div></div>
+
+          <div class="head-shape">
+            <div class="fur fur--top"></div>
+            <div class="cheek cheek--left"></div>
+            <div class="cheek cheek--right"></div>
+            <div class="mask mask--left"></div>
+            <div class="mask mask--right"></div>
+
+            <div class="brow brow--left"></div>
+            <div class="brow brow--right"></div>
+
+            <div class="eye eye--left">
+              <div class="eye__ball">
+                <div class="iris" data-eye>
+                  <div class="iris__ring"></div>
+                  <div class="pupil"></div>
+                  <div class="shine shine--large"></div>
+                  <div class="shine shine--small"></div>
+                </div>
+              </div>
+              <div class="lid" data-lid></div>
+            </div>
+
+            <div class="eye eye--right">
+              <div class="eye__ball">
+                <div class="iris" data-eye>
+                  <div class="iris__ring"></div>
+                  <div class="pupil"></div>
+                  <div class="shine shine--large"></div>
+                  <div class="shine shine--small"></div>
+                </div>
+              </div>
+              <div class="lid" data-lid></div>
+            </div>
+
+            <div class="muzzle muzzle--left"></div>
+            <div class="muzzle muzzle--right"></div>
+            <div class="nose"></div>
+            <div class="mouth mouth--left"></div>
+            <div class="mouth mouth--right"></div>
+
+            <div class="whiskers whiskers--left">
+              <i></i><i></i><i></i>
+            </div>
+            <div class="whiskers whiskers--right">
+              <i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
