@@ -182,15 +182,15 @@ rightEyeBone.position.set(0.50, 0.08, 0.90);
 headBone.add(rightEyeBone);
 
 const tailBones = [];
-const tailBaseAngles = [-0.62, -0.22, 0.08, 0.22, 0.18];
+const tailBaseAngles = [-2.72, 0.78, 0.74, 0.56, 0.34];
 let tailParent = bodyBone;
 for (let i = 0; i < 5; i += 1) {
   const bone = new THREE.Bone();
   bone.name = i === 4 ? 'TAIL_TIP' : `TAIL_0${i + 1}`;
   bone.position.set(
-    i === 0 ? 0.98 : 0.54,
-    i === 0 ? -0.68 : 0,
-    i === 0 ? -0.34 : 0,
+    i === 0 ? -0.82 : 0.54,
+    i === 0 ? -0.62 : 0,
+    i === 0 ? -0.28 : 0,
   );
   bone.rotation.z = tailBaseAngles[i];
   tailParent.add(bone);
@@ -198,96 +198,112 @@ for (let i = 0; i < 5; i += 1) {
   tailParent = bone;
 }
 
-// Shape pass v1: build a soft, front-facing cartoon silhouette from layered 3D volumes.
-const shoulderMesh = makeSphere(0.92, materials.fur, [1.18, 0.82, 0.95]);
-shoulderMesh.position.set(0, 0.58, -0.02);
+// Shape pass v2: silhouette-first. Deliberately stronger proportions so changes read clearly on mobile.
+const shoulderMesh = makeSphere(0.86, materials.fur, [1.02, 0.78, 0.94]);
+shoulderMesh.position.set(0, 0.58, -0.03);
 bodyBone.add(shoulderMesh);
 
-const bodyMesh = makeSphere(1, materials.fur, [1.18, 1.34, 1.00]);
-bodyMesh.position.set(0, -0.08, 0);
+const bodyMesh = makeSphere(1, materials.fur, [0.96, 1.22, 0.94]);
+bodyMesh.position.set(0, -0.08, -0.02);
 bodyBone.add(bodyMesh);
 
-const bellyMesh = makeSphere(0.93, materials.fur, [1.34, 0.98, 1.06]);
-bellyMesh.position.set(0, -0.68, 0.02);
+const bellyMesh = makeSphere(0.82, materials.fur, [1.08, 0.86, 1.02]);
+bellyMesh.position.set(0, -0.66, 0.02);
 bodyBone.add(bellyMesh);
 
-const chestMesh = makeSphere(0.80, materials.white, [0.78, 1.16, 0.46]);
-chestMesh.position.set(0, -0.04, 0.88);
+const haunchLeft = makeSphere(0.64, materials.fur, [0.92, 1.04, 1.02]);
+haunchLeft.position.set(-0.72, -0.58, -0.02);
+bodyBone.add(haunchLeft);
+
+const haunchRight = makeSphere(0.64, materials.fur, [0.92, 1.04, 1.02]);
+haunchRight.position.set(0.72, -0.58, -0.02);
+bodyBone.add(haunchRight);
+
+const chestMesh = makeSphere(0.70, materials.white, [0.70, 0.82, 0.48]);
+chestMesh.position.set(0, 0.18, 0.92);
 chestBone.add(chestMesh);
 
-const chestTuftTop = makeSphere(0.34, materials.white, [1.15, 0.54, 0.58]);
-chestTuftTop.position.set(0, 0.54, 1.02);
+const chestTuftTop = makeSphere(0.33, materials.white, [1.18, 0.48, 0.62]);
+chestTuftTop.position.set(0, 0.50, 1.03);
 chestBone.add(chestTuftTop);
 
-const chestTuftBottom = makeSphere(0.40, materials.white, [0.96, 0.72, 0.54]);
-chestTuftBottom.position.set(0, -0.68, 0.96);
+const chestTuftBottom = makeSphere(0.34, materials.white, [0.88, 0.54, 0.58]);
+chestTuftBottom.position.set(0, -0.42, 1.00);
 chestBone.add(chestTuftBottom);
 
-const frontPawLeft = makeCapsule(0.22, 0.86, materials.fur, [0.95, 1, 0.86]);
-frontPawLeft.position.set(-0.43, -0.86, 0.83);
-bodyBone.add(frontPawLeft);
+const frontLegLeft = makeCapsule(0.20, 0.60, materials.fur, [0.94, 1, 0.84]);
+frontLegLeft.position.set(-0.38, -0.72, 0.82);
+bodyBone.add(frontLegLeft);
 
-const frontPawRight = makeCapsule(0.22, 0.86, materials.fur, [0.95, 1, 0.86]);
-frontPawRight.position.set(0.43, -0.86, 0.83);
-bodyBone.add(frontPawRight);
+const frontLegRight = makeCapsule(0.20, 0.60, materials.fur, [0.94, 1, 0.84]);
+frontLegRight.position.set(0.38, -0.72, 0.82);
+bodyBone.add(frontLegRight);
 
-const frontFootLeft = makeSphere(0.29, materials.fur, [1.02, 0.58, 1.24]);
-frontFootLeft.position.set(-0.43, -1.36, 0.91);
+const sockLeft = makeCapsule(0.215, 0.42, materials.white, [0.98, 1, 0.90]);
+sockLeft.position.set(-0.38, -1.13, 0.90);
+bodyBone.add(sockLeft);
+
+const sockRight = makeCapsule(0.215, 0.42, materials.white, [0.98, 1, 0.90]);
+sockRight.position.set(0.38, -1.13, 0.90);
+bodyBone.add(sockRight);
+
+const frontFootLeft = makeSphere(0.30, materials.white, [1.12, 0.58, 1.30]);
+frontFootLeft.position.set(-0.38, -1.48, 0.96);
 bodyBone.add(frontFootLeft);
 
-const frontFootRight = makeSphere(0.29, materials.fur, [1.02, 0.58, 1.24]);
-frontFootRight.position.set(0.43, -1.36, 0.91);
+const frontFootRight = makeSphere(0.30, materials.white, [1.12, 0.58, 1.30]);
+frontFootRight.position.set(0.38, -1.48, 0.96);
 bodyBone.add(frontFootRight);
 
-const hindFootLeft = makeSphere(0.42, materials.fur, [1.12, 0.56, 1.34]);
-hindFootLeft.position.set(-0.88, -1.25, 0.38);
+const hindFootLeft = makeSphere(0.36, materials.white, [1.14, 0.56, 1.28]);
+hindFootLeft.position.set(-0.90, -1.38, 0.42);
 bodyBone.add(hindFootLeft);
 
-const hindFootRight = makeSphere(0.42, materials.fur, [1.12, 0.56, 1.34]);
-hindFootRight.position.set(0.88, -1.25, 0.38);
+const hindFootRight = makeSphere(0.36, materials.white, [1.14, 0.56, 1.28]);
+hindFootRight.position.set(0.90, -1.38, 0.42);
 bodyBone.add(hindFootRight);
 
-// Head: cranium + side cheek volumes create a wider Disney-like silhouette without a single-sphere look.
-const headMesh = makeSphere(1, materials.fur, [1.43, 1.20, 1.08]);
-headMesh.position.set(0, 0.08, 0);
+// The cranium is intentionally narrower than the cheek masses: this makes a readable cat silhouette.
+const headMesh = makeSphere(1, materials.fur, [1.28, 1.08, 1.04]);
+headMesh.position.set(0, 0.12, -0.02);
 headBone.add(headMesh);
 
-const skullTop = makeSphere(0.74, materials.furLight, [1.18, 0.60, 0.72]);
-skullTop.position.set(0, 0.58, 0.18);
+const skullTop = makeSphere(0.68, materials.furLight, [1.12, 0.56, 0.74]);
+skullTop.position.set(0, 0.61, 0.18);
 headBone.add(skullTop);
 
-const faceSideLeft = makeSphere(0.64, materials.fur, [1.03, 0.80, 0.76]);
-faceSideLeft.position.set(-0.62, -0.22, 0.36);
+const faceSideLeft = makeSphere(0.66, materials.fur, [1.08, 0.78, 0.80]);
+faceSideLeft.position.set(-0.67, -0.20, 0.34);
 headBone.add(faceSideLeft);
 
-const faceSideRight = makeSphere(0.64, materials.fur, [1.03, 0.80, 0.76]);
-faceSideRight.position.set(0.62, -0.22, 0.36);
+const faceSideRight = makeSphere(0.66, materials.fur, [1.08, 0.78, 0.80]);
+faceSideRight.position.set(0.67, -0.20, 0.34);
 headBone.add(faceSideRight);
 
-const forehead = makeSphere(0.66, materials.furDark, [0.64, 0.30, 0.16]);
+const forehead = makeSphere(0.62, materials.furDark, [0.62, 0.28, 0.16]);
 forehead.position.set(0, 0.62, 0.93);
 headBone.add(forehead);
 
-const leftEar = makeCone(0.60, 1.44, materials.fur, 3);
-leftEar.position.set(0, 0.49, 0);
-leftEar.scale.set(0.96, 1, 0.58);
-leftEar.rotation.z = deg(-3);
+const leftEar = makeCone(0.56, 1.50, materials.fur, 3);
+leftEar.position.set(0, 0.51, 0);
+leftEar.scale.set(0.88, 1, 0.56);
+leftEar.rotation.z = deg(-2);
 leftEarBone.add(leftEar);
 
-const rightEar = makeCone(0.60, 1.44, materials.fur, 3);
-rightEar.position.set(0, 0.49, 0);
-rightEar.scale.set(0.96, 1, 0.58);
-rightEar.rotation.z = deg(3);
+const rightEar = makeCone(0.56, 1.50, materials.fur, 3);
+rightEar.position.set(0, 0.51, 0);
+rightEar.scale.set(0.88, 1, 0.56);
+rightEar.rotation.z = deg(2);
 rightEarBone.add(rightEar);
 
-const innerLeft = makeCone(0.39, 1.02, materials.pink, 3);
-innerLeft.position.set(0, 0.48, 0.20);
-innerLeft.scale.set(0.72, 0.82, 0.30);
+const innerLeft = makeCone(0.37, 1.07, materials.pink, 3);
+innerLeft.position.set(0, 0.50, 0.20);
+innerLeft.scale.set(0.68, 0.84, 0.30);
 leftEarBone.add(innerLeft);
 
-const innerRight = makeCone(0.39, 1.02, materials.pink, 3);
-innerRight.position.set(0, 0.48, 0.20);
-innerRight.scale.set(0.72, 0.82, 0.30);
+const innerRight = makeCone(0.37, 1.07, materials.pink, 3);
+innerRight.position.set(0, 0.50, 0.20);
+innerRight.scale.set(0.68, 0.84, 0.30);
 rightEarBone.add(innerRight);
 
 const eyeParts = [];
@@ -341,16 +357,16 @@ function buildEye(bone) {
 buildEye(leftEyeBone);
 buildEye(rightEyeBone);
 
-const cheekLeft = makeSphere(0.54, materials.white, [1.05, 0.72, 0.64]);
-cheekLeft.position.set(-0.31, -0.46, 0.94);
+const cheekLeft = makeSphere(0.56, materials.white, [1.08, 0.70, 0.68]);
+cheekLeft.position.set(-0.33, -0.45, 0.98);
 headBone.add(cheekLeft);
 
-const cheekRight = makeSphere(0.54, materials.white, [1.05, 0.72, 0.64]);
-cheekRight.position.set(0.31, -0.46, 0.94);
+const cheekRight = makeSphere(0.56, materials.white, [1.08, 0.70, 0.68]);
+cheekRight.position.set(0.33, -0.45, 0.98);
 headBone.add(cheekRight);
 
-const chin = makeSphere(0.47, materials.white, [0.90, 0.58, 0.58]);
-chin.position.set(0, -0.68, 0.93);
+const chin = makeSphere(0.48, materials.white, [0.92, 0.55, 0.62]);
+chin.position.set(0, -0.67, 0.96);
 headBone.add(chin);
 
 const nose = makeSphere(0.145, materials.pink, [1.02, 0.72, 0.66]);
@@ -367,6 +383,19 @@ addMouthCurve([
   [0.08, -0.58, 1.29],
   [0.20, -0.61, 1.25],
 ]);
+
+function addBrow(points) {
+  const curve = new THREE.CatmullRomCurve3(
+    points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+  );
+  const brow = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, 16, 0.032, 8, false),
+    materials.mouth,
+  );
+  headBone.add(brow);
+}
+addBrow([[-0.82, 0.48, 1.13], [-0.56, 0.58, 1.18], [-0.31, 0.53, 1.15]]);
+addBrow([[0.31, 0.53, 1.15], [0.56, 0.58, 1.18], [0.82, 0.48, 1.13]]);
 
 // Small line whiskers keep the primitive prototype readable as a cat.
 function addWhiskers(side) {
@@ -391,7 +420,7 @@ addWhiskers('right');
 
 tailBones.forEach((bone, index) => {
   const segment = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.24 - index * 0.018, 0.56, 6, 12),
+    new THREE.CapsuleGeometry(0.31 - index * 0.026, 0.58, 6, 12),
     materials.fur,
   );
   segment.rotation.z = deg(90);
@@ -578,11 +607,13 @@ function animate(now) {
   rightEarBone.rotation.z = deg(8) - x * 0.065 - y * 0.022 - earPulse + state.earFlick * 0.45 - startle * 0.09;
 
   const breath = reducedMotion ? 1 : 1 + Math.sin(now * 0.00115) * 0.012 - startle * 0.012;
-  shoulderMesh.scale.set(1.18, 0.82 * breath, 0.95);
-  bodyMesh.scale.set(1.18, 1.34 * breath, 1.00);
-  bellyMesh.scale.set(1.34, 0.98 * breath, 1.06);
-  chestMesh.scale.set(0.78, 1.16 * breath, 0.46);
-  bodyBone.position.y = -1.15 + (reducedMotion ? 0 : Math.sin(now * 0.00115) * 0.025) + startle * 0.018;
+  shoulderMesh.scale.set(1.02, 0.78 * breath, 0.94);
+  bodyMesh.scale.set(0.96, 1.22 * breath, 0.94);
+  bellyMesh.scale.set(1.08, 0.86 * breath, 1.02);
+  haunchLeft.scale.set(0.92, 1.04 * breath, 1.02);
+  haunchRight.scale.set(0.92, 1.04 * breath, 1.02);
+  chestMesh.scale.set(0.70, 0.82 * breath, 0.48);
+  bodyBone.position.y = -1.02 + (reducedMotion ? 0 : Math.sin(now * 0.00115) * 0.025) + startle * 0.018;
   bodyBone.rotation.z = -x * 0.008 + state.startleSide * startle * 0.01;
 
   tailBones.forEach((bone, index) => {
@@ -624,8 +655,8 @@ function resize() {
   camera.aspect = width / height;
 
   // Keep roughly the same framing on narrow screens.
-  camera.position.z = width < 600 ? 10.2 : 9.2;
-  camera.position.y = width < 600 ? 0.15 : 0.35;
+  camera.position.z = width < 600 ? 10.7 : 9.7;
+  camera.position.y = width < 600 ? 0.05 : 0.28;
   camera.updateProjectionMatrix();
 }
 
