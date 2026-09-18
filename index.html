@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#080a0f" />
-  <title>Cursor Cat — Layered 2.5D</title>
+  <title>Cursor Cat — GLB preview</title>
   <link rel="stylesheet" href="./styles.css" />
   <script type="importmap">
     {
@@ -20,30 +20,30 @@
     <div class="hero__glow hero__glow--two"></div>
 
     <section class="hero__copy">
-      <p class="hero__kicker">Three.js · layered 2.5D</p>
-      <h1 class="hero__title">Теперь это уже<br />наш кот.</h1>
+      <p class="hero__kicker">Three.js · real GLB preview</p>
+      <h1 class="hero__title">Теперь проверяем<br />настоящую 3D-модель.</h1>
       <p class="hero__text">
-        layered cat v1.2: внешний вид собран из референсных 2.5D-слоёв, а Three.js отвечает за инерцию головы, idle, хвост, моргание и реакцию на касание.
+        Это исходная textured GLB-модель из to3D. Сейчас проверяем сам объём, силуэт, текстуру и то, как модель ведёт себя в браузере — до рига и полноценной мимики.
       </p>
       <p class="hero__hint"><span></span><b id="hintText">Двигай мышью · нажми на кота</b></p>
     </section>
 
-    <section class="hero__stage" id="stage" aria-label="Интерактивный 2.5D-кот">
+    <section class="hero__stage" id="stage" aria-label="Интерактивный preview 3D-кота">
       <div class="stage__halo"></div>
       <div class="stage__canvas" id="canvasHost"></div>
       <div class="stage__shadow" aria-hidden="true"></div>
 
       <div class="stage__badge">
         <span class="stage__dot"></span>
-        layered cat v1.2
+        GLB PREVIEW
       </div>
 
       <button class="stage__debug" id="debugToggle" type="button" aria-pressed="false">
-        Разложить слои
+        Показать сетку
       </button>
 
       <div class="stage__fallback" id="fallback" hidden>
-        WebGL недоступен. CSS-прототип сохранён в ветке <code>css-prototype</code>.
+        Не удалось загрузить GLB-модель.
       </div>
     </section>
   </main>
