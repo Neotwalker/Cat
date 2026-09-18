@@ -48,9 +48,9 @@ const ATLAS_H = 241;
 
 const atlasRects = {
   headOpen: [0, 0, 105, 93],
-  headClosed: [105, 0, 105, 86],
-  body: [0, 93, 112, 148],
-  tail: [112, 93, 78, 83],
+  headClosed: [105, 0, 104, 86],
+  body: [0, 93, 108, 148],
+  tail: [114, 93, 72, 82],
 };
 
 const state = {
@@ -172,7 +172,7 @@ function buildLayeredCat(baseTexture) {
 
   const headWidth = 3.52;
   const headOpenHeight = 3.12;
-  const headClosedHeight = headOpenHeight * (86 / 93);
+  const headClosedHeight = headOpenHeight;
 
   headOpenMesh = makeLayer(
     baseTexture,
@@ -190,7 +190,7 @@ function buildLayeredCat(baseTexture) {
     5,
     0.16,
   );
-  headClosedMesh.position.y = -0.02;
+  headClosedMesh.position.y = 0;
   headClosedMesh.visible = false;
 
   headRig.position.set(0, 1.40, 0.12);
