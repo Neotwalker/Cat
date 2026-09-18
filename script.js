@@ -108,7 +108,31 @@ function makeCropTexture(base, rect) {
   return texture;
 }
 
-function makeLayer(base, rect, width, height, renderOrder) {
+function makeLayerGeometry(width, height, curve = 0) {
+  const geometry = new THREE.PlaneGeometry(width, height, 18, 12);
+
+  if (curve !== 0) {
+    const pos = geometry.attributes.position;
+    const halfW = width * 0.5;
+    const halfH = height * 0.5;
+
+    for (let i = 0; i < pos.count; i += 1) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const nx = x / halfW;
+      const ny = y / halfH;
+      const bulge = (1 - nx * nx) * (0.82 + 0.18 * (1 - ny * ny));
+      pos.setZ(i, curve * bulge);
+    }
+
+    pos.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+
+  return geometry;
+}
+
+function makeLayer(base, rect, width, height, renderOrder, curve = 0) {
   const material = new THREE.MeshBasicMaterial({
     map: makeCropTexture(base, rect),
     transparent: true,
@@ -120,7 +144,7 @@ function makeLayer(base, rect, width, height, renderOrder) {
   });
 
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, height),
+    makeLayerGeometry(width, height, curve),
     material,
   );
 
@@ -134,27 +158,42 @@ function buildLayeredCat(baseTexture) {
   baseTexture.minFilter = THREE.LinearFilter;
 
   // Tail is deliberately behind the torso, matching the front reference.
-  tailMesh = makeLayer(baseTexture, atlasRects.tail, 2.15, 2.30, 1);
-  tailMesh.position.set(-0.38, 0.04, 0);
-  tailRig.position.set(-1.26, -1.35, -0.15);
+  tailMesh = makeLayer(baseTexture, atlasRects.tail, 2.34, 2.50, 1, 0.05);
+  tailMesh.position.set(-0.24, 0.03, 0);
+  tailRig.position.set(-1.28, -1.28, -0.15);
   tailRig.rotation.z = 0.015;
   tailRig.add(tailMesh);
 
   // The v1 body asset already contains chest, forelegs, hindquarters and paws.
-  bodyMesh = makeLayer(baseTexture, atlasRects.body, 3.35, 4.43, 2);
-  bodyMesh.position.set(0, -0.08, 0);
-  bodyRig.position.set(0, -1.00, 0);
+  bodyMesh = makeLayer(baseTexture, atlasRects.body, 3.48, 4.72, 2, 0.075);
+  bodyMesh.position.set(0, -0.10, 0);
+  bodyRig.position.set(0, -1.06, 0);
   bodyRig.add(bodyMesh);
 
-  // Open/closed heads use the same geometry so blinking never changes silhouette size.
-  const headWidth = 3.72;
-  const headHeight = 3.30;
+  const headWidth = 3.52;
+  const headOpenHeight = 3.12;
+  const headClosedHeight = headOpenHeight * (86 / 93);
 
-  headOpenMesh = makeLayer(baseTexture, atlasRects.headOpen, headWidth, headHeight, 4);
-  headClosedMesh = makeLayer(baseTexture, atlasRects.headClosed, headWidth, headHeight, 5);
-  headClosedMesh.material.opacity = 0;
+  headOpenMesh = makeLayer(
+    baseTexture,
+    atlasRects.headOpen,
+    headWidth,
+    headOpenHeight,
+    4,
+    0.16,
+  );
+  headClosedMesh = makeLayer(
+    baseTexture,
+    atlasRects.headClosed,
+    headWidth,
+    headClosedHeight,
+    5,
+    0.16,
+  );
+  headClosedMesh.position.y = -0.02;
+  headClosedMesh.visible = false;
 
-  headRig.position.set(0, 1.42, 0.12);
+  headRig.position.set(0, 1.40, 0.12);
   headRig.add(headOpenMesh, headClosedMesh);
 
   ready = true;
@@ -303,34 +342,38 @@ function animate(now) {
     rigRoot.position.y = floatY;
     rigRoot.position.x = -state.startleSide * startle * 0.018;
 
-    bodyRig.position.x = lerp(bodyRig.position.x, fan ? -0.45 : 0, 0.12);
-    bodyRig.position.y = -1.00 + Math.sin(now * 0.00112) * (reducedMotion ? 0 : 0.012);
-    bodyRig.rotation.z = -x * 0.007 + state.startleSide * startle * 0.008;
+    bodyRig.position.x = lerp(bodyRig.position.x, fan ? -0.78 : 0, 0.12);
+    bodyRig.position.y = -1.06 + Math.sin(now * 0.00112) * (reducedMotion ? 0 : 0.012);
+    bodyRig.rotation.y = x * 0.018;
+    bodyRig.rotation.z = -x * 0.006 + state.startleSide * startle * 0.008;
     bodyRig.scale.set(1, breath, 1);
 
     headRig.position.x = lerp(
       headRig.position.x,
-      (fan ? 0.52 : 0) + x * 0.105 - state.startleSide * startle * 0.04,
+      (fan ? 0.78 : 0) + x * 0.072 - state.startleSide * startle * 0.04,
       0.16,
     );
     headRig.position.y = lerp(
       headRig.position.y,
-      1.42 - y * 0.075 + startle * 0.025,
+      1.40 - y * 0.060 + startle * 0.025,
       0.16,
     );
-    headRig.rotation.z = -x * 0.045 - state.startleSide * startle * 0.025;
+    headRig.rotation.y = x * 0.115 - state.startleSide * startle * 0.018;
+    headRig.rotation.x = -y * 0.060 + startle * 0.010;
+    headRig.rotation.z = -x * 0.025 - state.startleSide * startle * 0.020;
     headRig.scale.setScalar(1 + startle * 0.008);
 
-    tailRig.position.x = lerp(tailRig.position.x, fan ? -1.82 : -1.26, 0.12);
+    tailRig.position.x = lerp(tailRig.position.x, fan ? -2.05 : -1.28, 0.12);
     tailRig.rotation.z =
       0.015
-      + (reducedMotion ? 0 : Math.sin(now * 0.00082) * 0.045)
-      + x * 0.018
-      + state.startleSide * startle * 0.055;
+      + (reducedMotion ? 0 : Math.sin(now * 0.00082) * 0.032)
+      + x * 0.014
+      + state.startleSide * startle * 0.045;
 
     const blink = reducedMotion ? 0 : updateBlink(now);
-    headOpenMesh.material.opacity = 1 - blink;
-    headClosedMesh.material.opacity = blink;
+    const eyesClosed = blink > 0.58;
+    headOpenMesh.visible = !eyesClosed;
+    headClosedMesh.visible = eyesClosed;
 
     const stageX = reducedMotion ? 0 : x * -3.0;
     const stageY = reducedMotion ? 0 : y * -2.0;
